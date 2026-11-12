@@ -1,0 +1,321 @@
+import { UpdateSettingsRequest } from "@shared/proto/cline/state"
+import { memo, type ReactNode } from "react"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { useExtensionState } from "@/context/ExtensionStateContext"
+import { StateServiceClient } from "@/services/grpc-client"
+import Section from "../Section"
+import { featureSettingControlId, featureSettingElementId } from "../settingsTargets"
+import { updateSetting } from "../utils/settingsHandlers"
+
+// Reusable checkbox component for feature settings
+interface FeatureCheckboxProps {
+	id?: string
+	checked: boolean | undefined
+	onChange: (checked: boolean) => void
+	label: string
+	description: ReactNode
+	disabled?: boolean
+	isRemoteLocked?: boolean
+	remoteTooltip?: string
+	isVisible?: boolean
+}
+
+// Interface for feature toggle configuration
+interface FeatureToggle {
+	id: string
+	label: string
+	description: ReactNode
+	settingKey: keyof UpdateSettingsRequest
+	stateKey: string
+}
+
+const agentFeatures: FeatureToggle[] = [
+	{
+		id: "enable-subagent",
+		label: "子代理",
+		description: "让 Cline Chinese 并行运行专注型的子代理，为您探索代码库。",
+		stateKey: "subagentsEnabled",
+		settingKey: "subagentsEnabled",
+	},
+	{
+		id: "auto-compact",
+		label: "自动压缩",
+		description: "自动压缩对话历史。",
+		stateKey: "useAutoCondense",
+		settingKey: "useAutoCondense",
+	},
+]
+
+const editorFeatures: FeatureToggle[] = [
+	{
+		id: "show-feature-tips",
+		label: "功能提示",
+		description: "在思考阶段轮换显示提示，帮助你发现 Cline Chinese 功能。",
+		stateKey: "showFeatureTips",
+		settingKey: "showFeatureTips",
+	},
+	{
+		id: "background-edit",
+		label: "后台编辑",
+		description: "允许在不抢占编辑器焦点的情况下进行编辑",
+		stateKey: "backgroundEditEnabled",
+		settingKey: "backgroundEditEnabled",
+	},
+	{
+		id: "checkpoints",
+		label: "检查点",
+		description: "在关键节点保存进度，便于回滚",
+		stateKey: "enableCheckpointsSetting",
+		settingKey: "enableCheckpointsSetting",
+	},
+	{
+		id: "worktrees",
+		label: "工作树",
+		description: "启用 git worktree 管理，以并行运行 Cline Chinese 任务。",
+		stateKey: "worktreesEnabled",
+		settingKey: "worktreesEnabled",
+	},
+]
+
+const advancedFeatures: FeatureToggle[] = [
+	{
+		id: "hooks",
+		label: "钩子",
+		description: "在任务执行期间启用生命周期和工具 hooks。",
+		stateKey: "hooksEnabled",
+		settingKey: "hooksEnabled",
+	},
+]
+
+const FeatureRow = memo(
+	({
+		id,
+		checked = false,
+		onChange,
+		label,
+		description,
+		disabled,
+		isRemoteLocked,
+		isVisible = true,
+		remoteTooltip,
+	}: FeatureCheckboxProps) => {
+		if (!isVisible) {
+			return null
+		}
+		const switchId = id ? featureSettingControlId(id) : label
+
+		const checkbox = (
+			<div className="flex items-center justify-between w-full">
+				<label htmlFor={switchId}>{label}</label>
+				<div>
+					<Switch
+						checked={checked}
+						className="shrink-0"
+						disabled={disabled || isRemoteLocked}
+						id={switchId}
+						onCheckedChange={onChange}
+						size="lg"
+					/>
+					{isRemoteLocked && <i className="codicon codicon-lock text-description text-sm" />}
+				</div>
+			</div>
+		)
+
+		return (
+			<div
+				className="flex flex-col items-start justify-between gap-4 py-3 px-1 w-full rounded-xs border border-transparent"
+				id={id ? featureSettingElementId(id) : undefined}>
+				<div className="space-y-0.5 flex-1 w-full">
+					{isRemoteLocked ? (
+						<Tooltip>
+							<TooltipTrigger asChild>{checkbox}</TooltipTrigger>
+							<TooltipContent className="max-w-xs" side="top">
+								{remoteTooltip}
+							</TooltipContent>
+						</Tooltip>
+					) : (
+						checkbox
+					)}
+				</div>
+				<div className="text-xs text-description">{description}</div>
+			</div>
+		)
+	},
+)
+
+interface FeatureSettingsSectionProps {
+	renderSectionHeader: (tabId: string) => JSX.Element | null
+}
+
+const FeatureSettingsSection = ({ renderSectionHeader }: FeatureSettingsSectionProps) => {
+	const {
+		enableCheckpointsSetting,
+		hooksEnabled,
+		mcpDisplayMode,
+		useAutoCondense,
+		compactionStrategy,
+		webSearchEnabled,
+		subagentsEnabled,
+		worktreesEnabled,
+		backgroundEditEnabled,
+		showFeatureTips,
+		chineseDailyPopupEnabled,
+		cloudSessionsAvailable,
+		cloudSessionsEnabled,
+	} = useExtensionState()
+
+	// State lookup for mapped features
+	const featureState: Record<string, boolean | undefined> = {
+		showFeatureTips,
+		enableCheckpointsSetting,
+		hooksEnabled,
+		useAutoCondense,
+		subagentsEnabled,
+		worktreesEnabled: worktreesEnabled?.user,
+		backgroundEditEnabled,
+	}
+
+	// Visibility lookup for features with feature flags
+	const featureVisibility: Record<string, boolean | undefined> = {
+		worktreesEnabled: worktreesEnabled?.featureFlag,
+	}
+
+	return (
+		<div className="mb-2">
+			{renderSectionHeader("features")}
+			<Section>
+				<div className="mb-5 flex flex-col gap-3">
+					{/* Core features */}
+					<div>
+						<div className="text-xs font-medium text-foreground/80 uppercase tracking-wider mb-3">智能体</div>
+						<div
+							className="relative p-3 pt-0 my-3 rounded-md border border-editor-widget-border/50"
+							id="agent-features">
+							{agentFeatures.map((feature) => (
+								<FeatureRow
+									checked={featureState[feature.stateKey]}
+									description={feature.description}
+									id={feature.id}
+									isVisible={featureVisibility[feature.stateKey] ?? true}
+									key={feature.id}
+									label={feature.label}
+									onChange={(checked) => updateSetting(feature.settingKey, checked)}
+								/>
+							))}
+							<div className="space-y-2 py-3">
+								<Label className="text-sm font-medium text-foreground">自动压缩策略</Label>
+								<p className="text-xs text-muted-foreground">控制自动压缩如何改写上下文。</p>
+								<Select
+									disabled={!useAutoCondense}
+									onValueChange={(value) => updateSetting("compactionStrategy", value)}
+									value={compactionStrategy ?? "agentic"}>
+									<SelectTrigger className="w-full">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="basic">基础</SelectItem>
+										<SelectItem value="agentic">智能体</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+							<FeatureRow
+								checked={webSearchEnabled}
+								description="Let the model search the web when the selected provider and model support it. Applies to new tasks."
+								label="Web Search"
+								onChange={(checked) => updateSetting("webSearchEnabled", checked)}
+							/>
+							<FeatureRow
+								checked={cloudSessionsEnabled}
+								description="Run Cline on your GitHub repositories in secure cloud sandboxes. Adds a Cloud option to the new task composer. Requires a Cline account with GitHub connected."
+								id="cloud-sessions"
+								isVisible={!!cloudSessionsAvailable}
+								label="Cloud"
+								onChange={(checked) => updateSetting("cloudSessionsEnabled", checked)}
+							/>
+						</div>
+					</div>
+
+					{/* Editor features */}
+					<div>
+						<div className="text-xs font-medium text-foreground/80 uppercase tracking-wider mb-3">编辑器</div>
+						<div
+							className="relative p-3 pt-0 my-3 rounded-md border border-editor-widget-border/50"
+							id="optional-features">
+							{editorFeatures.map((feature) => (
+								<FeatureRow
+									checked={featureState[feature.stateKey]}
+									description={feature.description}
+									id={feature.id}
+									isVisible={featureVisibility[feature.stateKey] ?? true}
+									key={feature.id}
+									label={feature.label}
+									onChange={(checked) => updateSetting(feature.settingKey, checked)}
+								/>
+							))}
+						</div>
+					</div>
+				</div>
+
+				{/* Notifications */}
+				<div>
+					<div className="text-xs font-medium text-foreground/80 uppercase tracking-wider mb-3">通知</div>
+					<div
+						className="relative p-3 my-3 rounded-md border border-editor-widget-border/50"
+						id="notification-features">
+						<FeatureRow
+							checked={chineseDailyPopupEnabled !== false}
+							description="每天首次打开 Cline Chinese 时展示每日推荐弹窗。关闭后不再自动显示，可随时在这里重新开启；不影响新用户弹窗和版本更新通知。"
+							id="daily-popup"
+							label="每日弹窗"
+							onChange={(checked) => {
+								StateServiceClient.updateChinesePromoState({ dailyPopupEnabled: checked }).catch((error) =>
+									console.error("Failed to update daily popup setting:", error),
+								)
+							}}
+						/>
+					</div>
+				</div>
+
+				{/* Advanced */}
+				<div>
+					<div className="text-xs font-medium text-foreground/80 uppercase tracking-wider mb-3">高级</div>
+					<div className="relative p-3 my-3 rounded-md border border-editor-widget-border/50" id="advanced-features">
+						<div className="space-y-3">
+							{advancedFeatures.map((feature) => (
+								<FeatureRow
+									checked={featureState[feature.stateKey]}
+									description={feature.description}
+									id={feature.id}
+									isVisible={featureVisibility[feature.stateKey] ?? true}
+									key={feature.id}
+									label={feature.label}
+									onChange={(checked) => updateSetting(feature.settingKey, checked)}
+								/>
+							))}
+
+							{/* MCP Display Mode */}
+							<div className="space-y-2">
+								<Label className="text-sm font-medium text-foreground">MCP 显示模式</Label>
+								<p className="text-xs text-muted-foreground">控制 MCP 响应的显示方式</p>
+								<Select onValueChange={(v) => updateSetting("mcpDisplayMode", v)} value={mcpDisplayMode}>
+									<SelectTrigger className="w-full">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="plain">纯文本</SelectItem>
+										<SelectItem value="rich">富文本显示</SelectItem>
+										<SelectItem value="markdown">Markdown</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+						</div>
+					</div>
+				</div>
+			</Section>
+		</div>
+	)
+}
+export default memo(FeatureSettingsSection)
