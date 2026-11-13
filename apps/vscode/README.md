@@ -1,5 +1,5 @@
 
-# Cline Chinese · Cline 中文汉化版 
+# cline-chinese纯净版 · Cline 中文汉化版 
 
 ![Installs](https://img.shields.io/visual-studio-marketplace/i/HybridTalentComputing.cline-chinese)
 ![Rating](https://img.shields.io/visual-studio-marketplace/r/HybridTalentComputing.cline-chinese)

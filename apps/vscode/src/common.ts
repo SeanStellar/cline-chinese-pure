@@ -114,8 +114,8 @@ async function showVersionUpdateAnnouncement(stateManager: StateManager) {
 			if (lastShownAnnouncementId !== latestAnnouncementId) {
 				// Show notification when there's a new announcement (major/minor updates or fresh installs)
 				const message = previousVersion
-					? `Cline Chinese has been updated to v${currentVersion}`
-					: `Welcome to Cline Chinese v${currentVersion}`
+					? `cline-chinese纯净版 已更新到 v${currentVersion}`
+					: `欢迎使用 cline-chinese纯净版 v${currentVersion}`
 				HostProvider.window.showMessage({
 					type: ShowMessageType.INFORMATION,
 					message,

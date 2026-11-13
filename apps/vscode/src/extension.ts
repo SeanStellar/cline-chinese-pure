@@ -266,11 +266,11 @@ export async function activate(context: vscode.ExtensionContext) {
 					// diagnostics themselves via getContextForCommand.
 					const actions: vscode.CodeAction[] = []
 
-					// Add to Cline Chinese (Always available)
-					const addAction = new vscode.CodeAction("添加到 Cline Chinese", vscode.CodeActionKind.QuickFix)
+					// Add to cline-chinese纯净版 (Always available)
+					const addAction = new vscode.CodeAction("添加到 cline-chinese纯净版", vscode.CodeActionKind.QuickFix)
 					addAction.command = {
 						command: commands.AddToChat,
-						title: "添加到 Cline Chinese",
+						title: "添加到 cline-chinese纯净版",
 					}
 					actions.push(addAction)
 

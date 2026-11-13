@@ -1,5 +1,5 @@
 
-# Cline Chinese · Cline 中文汉化版 
+# cline-chinese纯净版 · Cline 中文汉化版 
 
 ![Installs](https://img.shields.io/visual-studio-marketplace/i/HybridTalentComputing.cline-chinese)
 ![Rating](https://img.shields.io/visual-studio-marketplace/r/HybridTalentComputing.cline-chinese)
@@ -30,7 +30,7 @@ Cline Chinese 是 [Cline](https://github.com/cline/cline) 的开源社区汉化�
 
 Cline Chinese 是基于 [Cline](https://github.com/cline/cline) 的开源社区 fork做了UI、提示词、返回思考等全量汉化，不是原版 Cline 官方发布的扩展。本项目在 VS Code Marketplace 上使用独立的项目身份和发布信息：
 
-- **显示名称**：`Cline Chinese`
+- **显示名称**：`cline-chinese纯净版`
 - **扩展标识**：`cline-chinese`
 - **Code maintainer**: `SSYCloud`
 - **独立图标**：扩展包使用项目自己的 `apps/vscode/assets/icons/icon.png` 图标

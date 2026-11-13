@@ -1,8 +1,8 @@
 {
 	"name": "cline-chinese",
-	"displayName": "Cline Chinese",
+	"displayName": "cline-chinese纯净版",
 	"description": "Cline 的开源社区汉化版本",
-	"version": "4.1.34",
+	"version": "4.1.35",
 	"icon": "assets/icons/icon.png",
 	"engines": {
 		"vscode": "^1.101.0"
@@ -48,7 +48,7 @@
 	"contributes": {
 		"icons": {
 			"cline-icon": {
-				"description": "Cline Chinese 图标",
+				"description": "cline-chinese纯净版 图标",
 				"default": {
 					"fontPath": "assets/icons/cline-bot.woff",
 					"fontCharacter": "\\e900"
@@ -58,21 +58,21 @@
 		"walkthroughs": [
 			{
 				"id": "ClineWalkthrough",
-				"title": "认识 Cline Chinese，你的新编程伙伴",
-				"description": "Cline Chinese 像开发者一样编码，因为它像开发者一样思考。这里有 5 种让它为您工作的方式：",
+				"title": "认识 cline-chinese纯净版，你的新编程伙伴",
+				"description": "cline-chinese纯净版 像开发者一样编码，因为它像开发者一样思考。这里有 5 种让它为您工作的方式：",
 				"steps": [
 					{
 						"id": "welcome",
 						"title": "从目标开始，而不仅仅是一个提示",
-						"description": "告诉 Cline Chinese 你想要实现什么。它会像真正的伙伴一样，先规划、提问，然后编码。",
+						"description": "告诉 cline-chinese纯净版 你想要实现什么。它会像真正的伙伴一样，先规划、提问，然后编码。",
 						"media": {
 							"markdown": "walkthrough/step1.md"
 						}
 					},
 					{
 						"id": "learn",
-						"title": "让 Cline Chinese 学习你的代码库",
-						"description": "将 Cline Chinese 指向你的项目。它会建立理解，从而做出智能、上下文感知的修改。",
+						"title": "让 cline-chinese纯净版 学习你的代码库",
+						"description": "将 cline-chinese纯净版 指向你的项目。它会建立理解，从而做出智能、上下文感知的修改。",
 						"media": {
 							"markdown": "walkthrough/step2.md"
 						}
@@ -80,7 +80,7 @@
 					{
 						"id": "advanced-features",
 						"title": "始终使用最佳的 AI 模型",
-						"description": "Cline Chinese 赋予您最先进的 AI 能力，连接到顶级模型（Anthropic、Gemini、OpenAI 等）。",
+						"description": "cline-chinese纯净版 赋予您最先进的 AI 能力，连接到顶级模型（Anthropic、Gemini、OpenAI 等）。",
 						"media": {
 							"markdown": "walkthrough/step3.md"
 						}
@@ -96,7 +96,7 @@
 					{
 						"id": "getting-started",
 						"title": "你始终掌控一切",
-						"description": "审查 Cline Chinese 的计划和差异。在变更发生之前批准它们。没有意外。",
+						"description": "审查 cline-chinese纯净版 的计划和差异。在变更发生之前批准它们。没有意外。",
 						"media": {
 							"markdown": "walkthrough/step5.md"
 						},
@@ -111,7 +111,7 @@
 			"activitybar": [
 				{
 					"id": "cline-chinese-ActivityBar",
-					"title": "Cline Chinese",
+					"title": "cline-chinese纯净版",
 					"icon": "assets/icons/icon.svg"
 				}
 			]
@@ -175,12 +175,12 @@
 			},
 			{
 				"command": "cline-chinese.addToChat",
-				"title": "添加到 Cline Chinese",
+				"title": "添加到 cline-chinese纯净版",
 				"category": "ClineChinese"
 			},
 			{
 				"command": "cline-chinese.addTerminalOutputToChat",
-				"title": "添加到 Cline Chinese",
+				"title": "添加到 cline-chinese纯净版",
 				"category": "ClineChinese"
 			},
 			{
@@ -346,7 +346,7 @@
 			]
 		},
 		"configuration": {
-			"title": "Cline Chinese 设置",
+			"title": "cline-chinese纯净版 设置",
 			"properties": {}
 		}
 	},
