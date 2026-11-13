@@ -55,7 +55,7 @@ describe("RemoteConfigToggle", () => {
 		mocks.state.remoteConfigAvailable = true
 		render(<RemoteConfigToggle activeOrganization={organization()} />)
 
-		expect(screen.getByRole("checkbox", { name: "Opt out of remote config" })).toBeDefined()
+		expect(screen.getByRole("checkbox", { name: "退出远程配置" })).toBeDefined()
 	})
 
 	it("keeps the toggle available while opted out so the org can opt back in", () => {

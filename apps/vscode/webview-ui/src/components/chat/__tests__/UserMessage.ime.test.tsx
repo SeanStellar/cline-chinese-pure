@@ -102,12 +102,12 @@ describe("UserMessage – IME composition handling", () => {
 
 		await user.click(screen.getByText("Update this"))
 
-		expect(screen.getByRole("button", { name: "Reset Chat" })).toBeInTheDocument()
-		const resetCode = screen.getByRole("button", { name: "Reset Code" })
+		expect(screen.getByRole("button", { name: "重置对话" })).toBeInTheDocument()
+		const resetCode = screen.getByRole("button", { name: "重置代码" })
 		expect(CheckpointsServiceClient.checkpointExistsForMessage).toHaveBeenCalledWith(expect.objectContaining({ value: 123 }))
 		await waitFor(() => expect(resetCode).not.toHaveAttribute("aria-disabled"))
 
-		await user.click(screen.getByRole("button", { name: "Reset Chat" }))
+		await user.click(screen.getByRole("button", { name: "重置对话" }))
 		await waitFor(() => expect(TaskServiceClient.editMessageAndRegenerate).toHaveBeenCalledTimes(1))
 		expect(TaskServiceClient.editMessageAndRegenerate).toHaveBeenLastCalledWith(
 			expect.objectContaining({
@@ -120,8 +120,8 @@ describe("UserMessage – IME composition handling", () => {
 		)
 
 		await user.click(screen.getByText("Update this"))
-		await waitFor(() => expect(screen.getByRole("button", { name: "Reset Code" })).not.toHaveAttribute("aria-disabled"))
-		await user.click(screen.getByRole("button", { name: "Reset Code" }))
+		await waitFor(() => expect(screen.getByRole("button", { name: "重置代码" })).not.toHaveAttribute("aria-disabled"))
+		await user.click(screen.getByRole("button", { name: "重置代码" }))
 		await waitFor(() => expect(TaskServiceClient.editMessageAndRegenerate).toHaveBeenCalledTimes(2))
 		expect(TaskServiceClient.editMessageAndRegenerate).toHaveBeenLastCalledWith(
 			expect.objectContaining({
@@ -145,11 +145,11 @@ describe("UserMessage – IME composition handling", () => {
 		render(<UserMessage canRestoreWorkspace messageTs={123} text="Update this" />)
 
 		await user.click(screen.getByText("Update this"))
-		const resetCode = screen.getByRole("button", { name: "Reset Code" })
+		const resetCode = screen.getByRole("button", { name: "重置代码" })
 		expect(resetCode).toHaveAttribute("aria-busy", "true")
 		expect(resetCode).toHaveAttribute("aria-disabled", "true")
 		await user.hover(resetCode)
-		expect(await screen.findByText("Checking for a workspace checkpoint…")).toBeInTheDocument()
+		expect(await screen.findByText("正在检查工作区检查点…")).toBeInTheDocument()
 		await user.click(resetCode)
 		expect(TaskServiceClient.editMessageAndRegenerate).not.toHaveBeenCalled()
 
@@ -171,13 +171,13 @@ describe("UserMessage – IME composition handling", () => {
 
 		await user.click(screen.getByText("Update this"))
 
-		expect(screen.getByRole("button", { name: "Reset Chat" })).toBeEnabled()
-		await waitFor(() => expect(screen.getByRole("button", { name: "Reset Code" })).not.toHaveAttribute("aria-busy"))
-		const resetCode = screen.getByRole("button", { name: "Reset Code" })
+		expect(screen.getByRole("button", { name: "重置对话" })).toBeEnabled()
+		await waitFor(() => expect(screen.getByRole("button", { name: "重置代码" })).not.toHaveAttribute("aria-busy"))
+		const resetCode = screen.getByRole("button", { name: "重置代码" })
 		expect(resetCode).toHaveAttribute("aria-disabled", "true")
 		await user.click(resetCode)
-		expect(await screen.findByText(/No checkpoint is available for this message/)).toBeInTheDocument()
-		await user.click(screen.getByText("Settings"))
+		expect(await screen.findByText(/此消息没有可用的检查点/)).toBeInTheDocument()
+		await user.click(screen.getByText("设置"))
 		expect(navigateToSettings).toHaveBeenCalledWith("checkpoints")
 	})
 
@@ -188,13 +188,13 @@ describe("UserMessage – IME composition handling", () => {
 		render(<UserMessage canRestoreWorkspace messageTs={123} text="Update this" />)
 
 		await user.click(screen.getByText("Update this"))
-		await waitFor(() => expect(screen.getByRole("button", { name: "Reset Code" })).not.toHaveAttribute("aria-busy"))
-		const resetCode = screen.getByRole("button", { name: "Reset Code" })
+		await waitFor(() => expect(screen.getByRole("button", { name: "重置代码" })).not.toHaveAttribute("aria-busy"))
+		const resetCode = screen.getByRole("button", { name: "重置代码" })
 		act(() => resetCode.focus())
 		expect(resetCode).toHaveFocus()
 		await user.keyboard("{Enter}")
-		expect(await screen.findByText(/No checkpoint is available for this message/)).toBeInTheDocument()
-		const settingsLink = screen.getByText("Settings")
+		expect(await screen.findByText(/此消息没有可用的检查点/)).toBeInTheDocument()
+		const settingsLink = screen.getByText("设置")
 		expect(settingsLink).toHaveFocus()
 		await user.keyboard("{Enter}")
 		expect(navigateToSettings).toHaveBeenCalledWith("checkpoints")
@@ -206,11 +206,11 @@ describe("UserMessage – IME composition handling", () => {
 		render(<UserMessage canRestoreWorkspace messageTs={123} text="Update this" />)
 
 		await user.click(screen.getByText("Update this"))
-		const resetCode = screen.getByRole("button", { name: "Reset Code" })
+		const resetCode = screen.getByRole("button", { name: "重置代码" })
 		await waitFor(() => expect(resetCode).not.toHaveAttribute("aria-busy"))
 		expect(resetCode).toHaveAttribute("aria-disabled", "true")
 		await user.hover(resetCode)
-		expect(await screen.findByText("No workspace checkpoint was created for this message.")).toBeInTheDocument()
+		expect(await screen.findByText("此消息未创建工作区检查点。")).toBeInTheDocument()
 	})
 
 	it("hides Reset Code for messages that did not start a run", async () => {
@@ -218,8 +218,8 @@ describe("UserMessage – IME composition handling", () => {
 		render(<UserMessage messageTs={123} text="Update this" />)
 
 		await user.click(screen.getByText("Update this"))
-		expect(screen.getByRole("button", { name: "Reset Chat" })).toBeInTheDocument()
-		expect(screen.queryByRole("button", { name: "Reset Code" })).not.toBeInTheDocument()
+		expect(screen.getByRole("button", { name: "重置对话" })).toBeInTheDocument()
+		expect(screen.queryByRole("button", { name: "重置代码" })).not.toBeInTheDocument()
 		expect(CheckpointsServiceClient.checkpointExistsForMessage).not.toHaveBeenCalled()
 	})
 
@@ -235,7 +235,7 @@ describe("UserMessage – IME composition handling", () => {
 		await user.click(removeButton as HTMLElement)
 
 		expect(screen.queryByAltText("Thumbnail image-1")).not.toBeInTheDocument()
-		await user.click(screen.getByRole("button", { name: "Reset Chat" }))
+		await user.click(screen.getByRole("button", { name: "重置对话" }))
 		await waitFor(() => expect(TaskServiceClient.editMessageAndRegenerate).toHaveBeenCalledTimes(1))
 		expect(TaskServiceClient.editMessageAndRegenerate).toHaveBeenCalledWith(expect.objectContaining({ images: [] }))
 	})

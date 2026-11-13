@@ -88,7 +88,7 @@ describe("CompletionOutputRow View Changes", () => {
 
 		renderWithViewChanges()
 
-		const button = await screen.findByRole("button", { name: /View Changes/ })
+		const button = await screen.findByRole("button", { name: /查看更改/ })
 		expect(button).not.toBeDisabled()
 	})
 
@@ -97,7 +97,7 @@ describe("CompletionOutputRow View Changes", () => {
 
 		renderWithViewChanges()
 
-		expect(screen.queryByRole("button", { name: /View Changes/ })).toBeNull()
+		expect(screen.queryByRole("button", { name: /查看更改/ })).toBeNull()
 	})
 
 	it("stays hidden when nothing changed since the last message", async () => {
@@ -106,7 +106,7 @@ describe("CompletionOutputRow View Changes", () => {
 		renderWithViewChanges()
 
 		await waitFor(() => expect(checkpointLatestChangesCount).toHaveBeenCalled())
-		expect(screen.queryByRole("button", { name: /View Changes/ })).toBeNull()
+		expect(screen.queryByRole("button", { name: /查看更改/ })).toBeNull()
 	})
 
 	it("stays hidden when the count request fails (e.g. no checkpoint to compare against)", async () => {
@@ -115,7 +115,7 @@ describe("CompletionOutputRow View Changes", () => {
 		renderWithViewChanges()
 
 		await waitFor(() => expect(checkpointLatestChangesCount).toHaveBeenCalled())
-		expect(screen.queryByRole("button", { name: /View Changes/ })).toBeNull()
+		expect(screen.queryByRole("button", { name: /查看更改/ })).toBeNull()
 	})
 
 	it("never renders the button when showViewChanges is not set", () => {
@@ -124,17 +124,17 @@ describe("CompletionOutputRow View Changes", () => {
 		render(<CompletionOutputRow handleQuoteClick={vi.fn()} quoteButtonState={hiddenQuoteButton} text="All done!" />)
 
 		expect(checkpointLatestChangesCount).not.toHaveBeenCalled()
-		expect(screen.queryByRole("button", { name: /View Changes/ })).toBeNull()
+		expect(screen.queryByRole("button", { name: /查看更改/ })).toBeNull()
 	})
 
 	it("re-checks instead of reusing a stale positive answer when showViewChanges toggles", async () => {
 		checkpointLatestChangesCount.mockResolvedValue({ value: 2 })
 
 		const { rerender } = renderWithViewChanges()
-		await screen.findByRole("button", { name: /View Changes/ })
+		await screen.findByRole("button", { name: /查看更改/ })
 
 		rerender(<CompletionOutputRow handleQuoteClick={vi.fn()} quoteButtonState={hiddenQuoteButton} text="All done!" />)
-		expect(screen.queryByRole("button", { name: /View Changes/ })).toBeNull()
+		expect(screen.queryByRole("button", { name: /查看更改/ })).toBeNull()
 
 		// Second evaluation never resolves: the earlier `true` must not leak
 		// through and flash the button while the host is still checking.
@@ -148,7 +148,7 @@ describe("CompletionOutputRow View Changes", () => {
 			/>,
 		)
 		expect(checkpointLatestChangesCount).toHaveBeenCalledTimes(2)
-		expect(screen.queryByRole("button", { name: /View Changes/ })).toBeNull()
+		expect(screen.queryByRole("button", { name: /查看更改/ })).toBeNull()
 	})
 })
 

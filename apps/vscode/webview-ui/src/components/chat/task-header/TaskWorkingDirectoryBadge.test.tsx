@@ -94,7 +94,7 @@ describe("TaskWorkingDirectoryBadge", () => {
 			/>,
 		)
 		expect(screen.getByText("cline-hello")).toBeDefined()
-		expect(screen.getByText(/working directory is \/tmp\/cline-hello/)).toBeDefined()
+		expect(screen.getByText(/工作目录为 \/tmp\/cline-hello/)).toBeDefined()
 	})
 
 	it("renders nothing when the cwd is inside the workspace", () => {

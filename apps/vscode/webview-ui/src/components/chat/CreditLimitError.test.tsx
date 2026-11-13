@@ -18,7 +18,7 @@ describe("CreditLimitError", () => {
 		render(<CreditLimitError currentBalance={0} message="Out of credits" retryFailedRequest={retryFailedRequest} />)
 
 		await act(async () => {
-			fireEvent.click(screen.getByText("Retry Request"))
+			fireEvent.click(screen.getByText("重试请求"))
 			await Promise.resolve()
 		})
 

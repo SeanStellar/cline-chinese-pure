@@ -39,7 +39,7 @@ describe("OllamaModelPicker Component", () => {
 				/>
 			</ExtensionStateContextProvider>,
 		)
-		const modelSearchInput = screen.getByPlaceholderText("Search and select a model...")
+		const modelSearchInput = screen.getByPlaceholderText("搜索并选择模型...")
 		expect(modelSearchInput).toBeInTheDocument()
 		expect(modelSearchInput).toHaveValue("llama2")
 	})
@@ -70,7 +70,7 @@ describe("OllamaModelPicker Component", () => {
 			</ExtensionStateContextProvider>,
 		)
 
-		const modelSearchInput = screen.getByPlaceholderText("Search and select a model...")
+		const modelSearchInput = screen.getByPlaceholderText("搜索并选择模型...")
 		fireEvent.focus(modelSearchInput)
 
 		// Check if dropdown items are displayed
@@ -89,7 +89,7 @@ describe("OllamaModelPicker Component", () => {
 			</ExtensionStateContextProvider>,
 		)
 
-		const modelSearchInput = screen.getByPlaceholderText("Search and select a model...")
+		const modelSearchInput = screen.getByPlaceholderText("搜索并选择模型...")
 		fireEvent.focus(modelSearchInput)
 		fireEvent.input(modelSearchInput, { target: { value: "code" } })
 
@@ -115,7 +115,7 @@ describe("OllamaModelPicker Component", () => {
 		)
 
 		// Get the input and focus it to show dropdown
-		const modelSearchInput = screen.getByPlaceholderText("Search and select a model...")
+		const modelSearchInput = screen.getByPlaceholderText("搜索并选择模型...")
 		fireEvent.focus(modelSearchInput)
 
 		// Find any dropdown item and click it to test selection
@@ -141,7 +141,7 @@ describe("OllamaModelPicker Component", () => {
 		)
 
 		// Clear button should be visible when there's a value
-		const clearButton = screen.getByLabelText("Clear search")
+		const clearButton = screen.getByLabelText("清除搜索")
 		fireEvent.click(clearButton)
 
 		// Check if onModelChange was called with empty string
@@ -160,7 +160,7 @@ describe("OllamaModelPicker Component", () => {
 		)
 
 		// Check initial value
-		const modelSearchInput = screen.getByPlaceholderText("Search and select a model...")
+		const modelSearchInput = screen.getByPlaceholderText("搜索并选择模型...")
 		expect(modelSearchInput).toHaveValue("llama2")
 
 		// Rerender with different selectedModelId

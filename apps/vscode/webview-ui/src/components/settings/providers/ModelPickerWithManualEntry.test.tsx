@@ -77,7 +77,7 @@ describe("ModelPickerWithManualEntry", () => {
 			/>,
 		)
 
-		fireEvent.change(screen.getByLabelText("Model"), { target: { value: "mistral" } })
+		fireEvent.change(screen.getByLabelText("模型"), { target: { value: "mistral" } })
 
 		expect(onSelect).toHaveBeenCalledWith({ providerId: "ollama", modelId: "mistral", modelInfo: models.mistral })
 	})
@@ -95,8 +95,8 @@ describe("ModelPickerWithManualEntry", () => {
 			/>,
 		)
 
-		expect(screen.getByText("Loading models…")).toBeInTheDocument()
-		expect(screen.getByLabelText("Custom model ID")).toBeInTheDocument()
+		expect(screen.getByText("正在加载模型…")).toBeInTheDocument()
+		expect(screen.getByLabelText("自定义模型 ID")).toBeInTheDocument()
 	})
 
 	it("shows manual entry during error when custom ids are allowed", () => {
@@ -113,7 +113,7 @@ describe("ModelPickerWithManualEntry", () => {
 		)
 
 		expect(screen.getByRole("alert")).toHaveTextContent("Could not fetch models")
-		expect(screen.getByLabelText("Custom model ID")).toBeInTheDocument()
+		expect(screen.getByLabelText("自定义模型 ID")).toBeInTheDocument()
 	})
 
 	it("commits custom model ids with safe default model info", () => {
@@ -130,8 +130,8 @@ describe("ModelPickerWithManualEntry", () => {
 			/>,
 		)
 
-		fireEvent.change(screen.getByLabelText("Custom model ID"), { target: { value: "my-custom:latest" } })
-		fireEvent.click(screen.getByText("Use custom model"))
+		fireEvent.change(screen.getByLabelText("自定义模型 ID"), { target: { value: "my-custom:latest" } })
+		fireEvent.click(screen.getByText("使用自定义模型"))
 
 		expect(onSelect).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -155,9 +155,9 @@ describe("ModelPickerWithManualEntry", () => {
 			/>,
 		)
 
-		expect(screen.queryByLabelText("Custom model ID")).not.toBeInTheDocument()
-		fireEvent.change(screen.getByLabelText("Model"), { target: { value: "__custom__" } })
-		expect(screen.getByLabelText("Custom model ID")).toBeInTheDocument()
+		expect(screen.queryByLabelText("自定义模型 ID")).not.toBeInTheDocument()
+		fireEvent.change(screen.getByLabelText("模型"), { target: { value: "__custom__" } })
+		expect(screen.getByLabelText("自定义模型 ID")).toBeInTheDocument()
 	})
 
 	it("shows stale and not-in-current-list indicators without replacing selection", () => {
@@ -174,8 +174,11 @@ describe("ModelPickerWithManualEntry", () => {
 			/>,
 		)
 
-		expect(screen.getByText("Model list may be stale for the current provider configuration.")).toBeInTheDocument()
-		expect(screen.getByText("Selected model “custom-outside-list” is not in the current list.")).toBeInTheDocument()
+		// The stale notice and the not-in-list notice are separate status
+		// regions; the model id is interpolated so match on the region text.
+		const statusMessages = screen.getAllByRole("status").map((node) => node.textContent)
+		expect(statusMessages).toContain("当前提供商配置下的模型列表可能已过期。")
+		expect(statusMessages).toContain("所选模型“custom-outside-list”不在当前列表中。")
 		expect(onSelect).not.toHaveBeenCalled()
 	})
 
@@ -193,8 +196,8 @@ describe("ModelPickerWithManualEntry", () => {
 			/>,
 		)
 
-		expect(screen.getByText("Selected model “retired-static-model” is not in the current list.")).toBeInTheDocument()
-		expect(screen.queryByLabelText("Custom model ID")).not.toBeInTheDocument()
+		expect(screen.getByRole("status")).toHaveTextContent("所选模型“retired-static-model”不在当前列表中。")
+		expect(screen.queryByLabelText("自定义模型 ID")).not.toBeInTheDocument()
 		expect(onSelect).not.toHaveBeenCalled()
 	})
 
@@ -211,7 +214,7 @@ describe("ModelPickerWithManualEntry", () => {
 			/>,
 		)
 
-		expect(screen.getByLabelText("Custom model ID")).toHaveValue("")
+		expect(screen.getByLabelText("自定义模型 ID")).toHaveValue("")
 
 		rerender(
 			<ModelPickerWithManualEntry
@@ -225,7 +228,7 @@ describe("ModelPickerWithManualEntry", () => {
 			/>,
 		)
 
-		expect(screen.getByLabelText("Custom model ID")).toHaveValue("my-fast-model")
+		expect(screen.getByLabelText("自定义模型 ID")).toHaveValue("my-fast-model")
 	})
 
 	it("clears the custom field when the hydrated selection is in the catalog", () => {
@@ -242,7 +245,7 @@ describe("ModelPickerWithManualEntry", () => {
 		)
 
 		// Lazy init captured "llama3" while the catalog was empty.
-		expect(screen.getByLabelText("Custom model ID")).toHaveValue("llama3")
+		expect(screen.getByLabelText("自定义模型 ID")).toHaveValue("llama3")
 
 		rerender(
 			<ModelPickerWithManualEntry
@@ -256,8 +259,8 @@ describe("ModelPickerWithManualEntry", () => {
 			/>,
 		)
 
-		fireEvent.change(screen.getByLabelText("Model"), { target: { value: "__custom__" } })
-		expect(screen.getByLabelText("Custom model ID")).toHaveValue("")
+		fireEvent.change(screen.getByLabelText("模型"), { target: { value: "__custom__" } })
+		expect(screen.getByLabelText("自定义模型 ID")).toHaveValue("")
 	})
 
 	it("does not reset the custom field while the user is typing", () => {
@@ -273,7 +276,7 @@ describe("ModelPickerWithManualEntry", () => {
 			/>,
 		)
 
-		fireEvent.change(screen.getByLabelText("Custom model ID"), { target: { value: "my-fast" } })
+		fireEvent.change(screen.getByLabelText("自定义模型 ID"), { target: { value: "my-fast" } })
 
 		// A re-render with a fresh models object identity (catalog still
 		// loading) must not clobber the in-progress input.
@@ -289,7 +292,7 @@ describe("ModelPickerWithManualEntry", () => {
 			/>,
 		)
 
-		expect(screen.getByLabelText("Custom model ID")).toHaveValue("my-fast")
+		expect(screen.getByLabelText("自定义模型 ID")).toHaveValue("my-fast")
 	})
 
 	it("does not auto-select while model props change during refresh", () => {

@@ -31,7 +31,7 @@ describe("BannerCarousel", () => {
 		expect(screen.getByText("1 / 3")).toBeInTheDocument()
 
 		// Navigate to Banner B (index 1); advance past the transition timeout
-		fireEvent.click(screen.getByLabelText("Next banner"))
+		fireEvent.click(screen.getByLabelText("下一个横幅"))
 		act(() => {
 			vi.advanceTimersByTime(300)
 		})
@@ -48,7 +48,7 @@ describe("BannerCarousel", () => {
 		const bannerB = makeBanner("banner-b", "Banner B")
 
 		const { rerender } = render(<BannerCarousel banners={[bannerA, bannerB]} />)
-		fireEvent.click(screen.getByLabelText("Next banner"))
+		fireEvent.click(screen.getByLabelText("下一个横幅"))
 		act(() => {
 			vi.advanceTimersByTime(300)
 		})

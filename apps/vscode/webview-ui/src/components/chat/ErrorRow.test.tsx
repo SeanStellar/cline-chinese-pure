@@ -116,16 +116,14 @@ describe("ErrorRow", () => {
 	it("renders diff error", () => {
 		render(<ErrorRow errorType="diff_error" message={mockMessage} />)
 
-		expect(
-			screen.getByText("The model used search patterns that don't match anything in the file. Retrying..."),
-		).toBeInTheDocument()
+		expect(screen.getByText("模型使用的搜索模式与文件中的任何内容都不匹配。正在重试...")).toBeInTheDocument()
 	})
 
 	it("renders clineignore error", () => {
 		const clineignoreMessage = { ...mockMessage, text: "/path/to/file.txt" }
 		render(<ErrorRow errorType="clineignore_error" message={clineignoreMessage} />)
 
-		expect(screen.getByText(/Cline tried to access/)).toBeInTheDocument()
+		expect(screen.getByText(/Cline 尝试访问/)).toBeInTheDocument()
 		expect(screen.getByText("/path/to/file.txt")).toBeInTheDocument()
 	})
 
@@ -193,7 +191,7 @@ describe("ErrorRow", () => {
 			render(<ErrorRow apiRequestFailedMessage="Rate limit exceeded" errorType="error" message={mockMessage} />)
 
 			expect(screen.getByText("Rate limit exceeded")).toBeInTheDocument()
-			expect(screen.getByText("Request ID: req_123456")).toBeInTheDocument()
+			expect(screen.getByText("请求 ID：req_123456")).toBeInTheDocument()
 		})
 
 		it("renders quota exceeded error", async () => {
@@ -317,7 +315,7 @@ describe("ErrorRow", () => {
 			expect(screen.getByTestId("cline-pass-limit-error")).toBeInTheDocument()
 			expect(screen.getByText(limitMessage)).toBeInTheDocument()
 
-			fireEvent.click(screen.getByText("Switch to Usage-Based billing"))
+			fireEvent.click(screen.getByText("切换到按用量计费"))
 
 			await waitFor(() => expect(mockUpdateApiConfigurationProto).toHaveBeenCalledTimes(1))
 			const request = mockUpdateApiConfigurationProto.mock.calls[0][0]
@@ -325,7 +323,7 @@ describe("ErrorRow", () => {
 			expect(request.apiConfiguration.actModeApiProvider).toBe("cline")
 			expect(request.apiConfiguration.planModeClineModelId).toBeUndefined()
 			expect(request.apiConfiguration.actModeClineModelId).toBeUndefined()
-			expect(screen.getByText("Switched to Usage-Based billing")).toBeInTheDocument()
+			expect(screen.getByText("已切换到按用量计费")).toBeInTheDocument()
 		})
 
 		it("renders a daily free model limit without usage-billing guidance", async () => {
@@ -343,11 +341,11 @@ describe("ErrorRow", () => {
 			render(<ErrorRow apiRequestFailedMessage={limitMessage} errorType="error" message={mockMessage} />)
 
 			expect(screen.getByTestId("cline-free-model-limit-error")).toBeInTheDocument()
-			expect(screen.getByText(/You've reached today's free usage limit for this model/)).toBeInTheDocument()
-			expect(screen.getByText(/Try again in 23h 59m/)).toBeInTheDocument()
+			expect(screen.getByText(/你已用完该模型今天的免费使用额度/)).toBeInTheDocument()
+			expect(screen.getByText(/23h 59m 后重试/)).toBeInTheDocument()
 			expect(screen.queryByText(limitMessage)).not.toBeInTheDocument()
 			expect(screen.queryByText(/deepseek-v4-flash/i)).not.toBeInTheDocument()
-			expect(screen.queryByText(/Switch to Usage-Based billing/i)).not.toBeInTheDocument()
+			expect(screen.queryByText(/切换到按用量计费/)).not.toBeInTheDocument()
 		})
 
 		it("renders the promotion-ended card with a route into the model picker", async () => {
@@ -389,8 +387,8 @@ describe("ErrorRow", () => {
 			render(<ErrorRow apiRequestFailedMessage="Authentication failed" errorType="error" message={mockMessage} />)
 
 			expect(screen.queryByText("Authentication failed")).not.toBeInTheDocument()
-			expect(screen.getByText(/Whoops looks like you're logged out/)).toBeInTheDocument()
-			expect(screen.getByText("Sign in to Cline")).toBeInTheDocument()
+			expect(screen.getByText(/糟糕，你似乎已退出登录/)).toBeInTheDocument()
+			expect(screen.getByText(/登录 Cline/)).toBeInTheDocument()
 		})
 
 		it("renders a 404 as the real message plus model/endpoint guidance, never the sign-in prompt", async () => {
@@ -470,10 +468,10 @@ describe("ErrorRow", () => {
 			)
 
 			expect(screen.getByText(/PowerShell is not recognized/)).toBeInTheDocument()
-			expect(screen.getByText("troubleshooting guide")).toBeInTheDocument()
-			expect(screen.getByRole("link", { name: "troubleshooting guide" })).toHaveAttribute(
+			expect(screen.getByText("故障排查指南")).toBeInTheDocument()
+			expect(screen.getByRole("link", { name: "故障排查指南" })).toHaveAttribute(
 				"href",
-				"https://github.com/cline/cline/wiki/TroubleShooting-%E2%80%90-%22PowerShell-is-not-recognized-as-an-internal-or-external-command%22",
+				"https://github.com/SSYCloud/cline-chinese/wiki/TroubleShooting-%E2%80%90-%22PowerShell-is-not-recognized-as-an-internal-or-external-command%22",
 			)
 		})
 

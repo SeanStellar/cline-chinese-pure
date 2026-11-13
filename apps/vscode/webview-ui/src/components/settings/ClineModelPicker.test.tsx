@@ -149,8 +149,8 @@ describe("ClineModelPicker", () => {
 
 		// Opens on the tab holding the selected model.
 		expect(await screen.findByText("GLM 5.3")).toBeInTheDocument()
-		expect(screen.getByText("Usage-Billing")).toBeInTheDocument()
-		expect(screen.queryByText("Free")).not.toBeInTheDocument()
+		expect(screen.getByText("按用量计费")).toBeInTheDocument()
+		expect(screen.queryByText("免费")).not.toBeInTheDocument()
 		expect(screen.getByText("Subscribe to ClinePass")).toBeInTheDocument()
 
 		fireEvent.click(screen.getByText("ClineFree"))
@@ -213,7 +213,7 @@ describe("ClineModelPicker", () => {
 
 		expect(await screen.findByText("Claude Opus 5")).toBeInTheDocument()
 
-		fireEvent.click(screen.getByText("Free"))
+		fireEvent.click(screen.getByText("免费"))
 
 		expect(await screen.findByText("DeepSeek V4 Flash")).toBeInTheDocument()
 		// A missing display name degrades to the raw id
@@ -299,6 +299,6 @@ describe("ClineModelPicker", () => {
 
 		render(<ClineModelPicker currentMode="act" />)
 
-		expect(screen.getByText("Reasoning Effort")).toBeInTheDocument()
+		expect(screen.getByText("思考强度")).toBeInTheDocument()
 	})
 })

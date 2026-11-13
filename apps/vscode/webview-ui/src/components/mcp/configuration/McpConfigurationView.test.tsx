@@ -50,8 +50,8 @@ describe("McpConfigurationView", () => {
 		render(<McpConfigurationView onDone={vi.fn()} />)
 
 		expect(screen.queryByRole("button", { name: "Marketplace" })).not.toBeInTheDocument()
-		expect(screen.getByRole("button", { name: "Remote Servers" })).toBeInTheDocument()
-		expect(screen.getByRole("button", { name: "Configure" })).toBeInTheDocument()
+		expect(screen.getByRole("button", { name: "远程服务器" })).toBeInTheDocument()
+		expect(screen.getByRole("button", { name: "配置" })).toBeInTheDocument()
 		expect(screen.getByText("Configure Servers View")).toBeInTheDocument()
 
 		await waitFor(() => expect(mocks.getLatestMcpServers).toHaveBeenCalledTimes(1))
@@ -65,8 +65,8 @@ describe("McpConfigurationView", () => {
 		render(<McpConfigurationView initialTab="addRemote" onDone={vi.fn()} />)
 
 		expect(screen.queryByRole("button", { name: "Marketplace" })).not.toBeInTheDocument()
-		expect(screen.queryByRole("button", { name: "Remote Servers" })).not.toBeInTheDocument()
-		expect(screen.getByRole("button", { name: "Configure" })).toBeInTheDocument()
+		expect(screen.queryByRole("button", { name: "远程服务器" })).not.toBeInTheDocument()
+		expect(screen.getByRole("button", { name: "配置" })).toBeInTheDocument()
 		expect(screen.queryByText("Add Remote Server Form")).not.toBeInTheDocument()
 		expect(screen.getByText("Configure Servers View")).toBeInTheDocument()
 	})

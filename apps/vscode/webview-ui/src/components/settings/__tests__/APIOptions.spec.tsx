@@ -46,7 +46,7 @@ vi.mock("../../../context/ExtensionStateContext", async (importOriginal) => {
 	}
 })
 
-const mockExtensionState = (apiConfiguration: Partial<ApiConfiguration>) => {
+const mockExtensionState = (apiConfiguration: Partial<ApiConfiguration>, extraState: Record<string, unknown> = {}) => {
 	vi.mocked(useExtensionState).mockReturnValue({
 		apiConfiguration,
 		setApiConfiguration: vi.fn(),
@@ -67,6 +67,7 @@ const mockExtensionState = (apiConfiguration: Partial<ApiConfiguration>) => {
 		},
 		startProviderModelsRequest: vi.fn(),
 		applyProviderModelsResponse: vi.fn(),
+		...extraState,
 	} as any)
 }
 
@@ -90,7 +91,7 @@ describe("ApiOptions Component", () => {
 				<ApiOptions currentMode="plan" showModelOptions={true} />
 			</ExtensionStateContextProvider>,
 		)
-		const apiKeyInput = screen.getByPlaceholderText("Enter API Key...")
+		const apiKeyInput = screen.getByPlaceholderText("输入 API 密钥...")
 		expect(apiKeyInput).toBeInTheDocument()
 	})
 
@@ -100,13 +101,13 @@ describe("ApiOptions Component", () => {
 				<ApiOptions currentMode="plan" showModelOptions={true} />
 			</ExtensionStateContextProvider>,
 		)
-		const modelIdInput = screen.getByPlaceholderText("Search and select a model...")
+		const modelIdInput = screen.getByPlaceholderText("搜索并选择模型...")
 		expect(modelIdInput).toBeInTheDocument()
 	})
 
 	it.each([
-		["openai-native", "OpenAI API Key"],
-		["openai-codex", "Sign in to OpenAI Codex"],
+		["openai-native", "OpenAI API 密钥"],
+		["openai-codex", "登录 OpenAI Codex"],
 	])("renders only the dedicated form for %s", (provider, dedicatedFormText) => {
 		mockExtensionState({
 			planModeApiProvider: provider as any,
@@ -120,7 +121,7 @@ describe("ApiOptions Component", () => {
 		)
 
 		expect(screen.getByText(dedicatedFormText)).toBeInTheDocument()
-		expect(screen.queryByText("Custom Headers")).not.toBeInTheDocument()
+		expect(screen.queryByText("自定义请求头")).not.toBeInTheDocument()
 	})
 
 	it("renders the OpenAI-compatible form for custom/unknown catalog providers", () => {
@@ -151,7 +152,7 @@ describe("ApiOptions Component", () => {
 		// Custom/unknown providers use the richer OpenAI-compatible form (Base
 		// URL, Custom Headers, Model Configuration, Reasoning Effort) rather than
 		// the simpler generic settings form.
-		expect(screen.getByText("Custom Headers")).toBeInTheDocument()
+		expect(screen.getByText("自定义请求头")).toBeInTheDocument()
 		expect(screen.queryByTestId("generic-provider-settings")).not.toBeInTheDocument()
 	})
 })
@@ -213,14 +214,34 @@ describe("ApiOptions Component", () => {
 describe("OpenApiInfoOptions", () => {
 	const mockPostMessage = vi.fn()
 
+	// Per-model configuration (context window, max output tokens, image input)
+	// now lives in the provider preset card's "添加模型" dialog rather than a
+	// collapsible section in the OpenAI-compatible form, so seed one preset and
+	// open that dialog before asserting the model config fields.
+	const openModelConfigDialog = () => {
+		fireEvent.click(screen.getByRole("button", { name: "添加模型" }))
+	}
+
 	beforeEach(() => {
 		vi.clearAllMocks()
 		//@ts-expect-error - vscode is not defined in the global namespace in test environment
 		global.vscode = { postMessage: mockPostMessage }
-		mockExtensionState({
-			planModeApiProvider: "openai",
-			actModeApiProvider: "openai",
-		})
+		mockExtensionState(
+			{
+				planModeApiProvider: "openai",
+				actModeApiProvider: "openai",
+			},
+			{
+				providerPresets: JSON.stringify([
+					{
+						id: "preset-openai",
+						name: "OpenAI 预设",
+						baseUrl: "https://api.openai.com/v1",
+						models: ["gpt-4o"],
+					},
+				]),
+			},
+		)
 	})
 
 	it("renders OpenAI Supports Images input", () => {
@@ -229,9 +250,10 @@ describe("OpenApiInfoOptions", () => {
 				<ApiOptions currentMode="plan" showModelOptions={true} />
 			</ExtensionStateContextProvider>,
 		)
-		fireEvent.click(screen.getByText("Model Configuration"))
-		const apiKeyInput = screen.getByText("Supports Images")
-		expect(apiKeyInput).toBeInTheDocument()
+		openModelConfigDialog()
+		const supportsImagesInput = screen.getByLabelText("图片")
+		expect(supportsImagesInput).toBeInTheDocument()
+		expect(supportsImagesInput).toHaveAttribute("type", "checkbox")
 	})
 
 	it("renders OpenAI Context Window Size input", () => {
@@ -240,9 +262,9 @@ describe("OpenApiInfoOptions", () => {
 				<ApiOptions currentMode="plan" showModelOptions={true} />
 			</ExtensionStateContextProvider>,
 		)
-		fireEvent.click(screen.getByText("Model Configuration"))
-		const orgIdInput = screen.getByText("Context Window Size")
-		expect(orgIdInput).toBeInTheDocument()
+		openModelConfigDialog()
+		const contextWindowInput = screen.getByLabelText("上下文窗口")
+		expect(contextWindowInput).toBeInTheDocument()
 	})
 
 	it("renders OpenAI Max Output Tokens input", () => {
@@ -251,9 +273,9 @@ describe("OpenApiInfoOptions", () => {
 				<ApiOptions currentMode="plan" showModelOptions={true} />
 			</ExtensionStateContextProvider>,
 		)
-		fireEvent.click(screen.getByText("Model Configuration"))
-		const modelInput = screen.getByText("Max Output Tokens")
-		expect(modelInput).toBeInTheDocument()
+		openModelConfigDialog()
+		const maxTokensInput = screen.getByLabelText("最大输出 Token")
+		expect(maxTokensInput).toBeInTheDocument()
 	})
 })
 

@@ -89,9 +89,9 @@ describe("GenericProviderSettings", () => {
 			/>,
 		)
 
-		expect(screen.getByLabelText("Model")).toHaveValue("deepseek-chat")
-		expect(screen.queryByText("Reasoning Effort")).not.toBeInTheDocument()
-		fireEvent.change(screen.getByLabelText("Model"), { target: { value: "deepseek-reasoner" } })
+		expect(screen.getByLabelText("模型")).toHaveValue("deepseek-chat")
+		expect(screen.queryByText("思考强度")).not.toBeInTheDocument()
+		fireEvent.change(screen.getByLabelText("模型"), { target: { value: "deepseek-reasoner" } })
 
 		await waitFor(() => expect(commitSelection).toHaveBeenCalledTimes(1))
 		expect(commitSelection).toHaveBeenCalledWith("act", {
@@ -135,7 +135,7 @@ describe("GenericProviderSettings", () => {
 			/>,
 		)
 
-		expect(screen.getByText("Reasoning Effort")).toBeInTheDocument()
+		expect(screen.getByText("思考强度")).toBeInTheDocument()
 	})
 
 	it("shows saved API keys as masked and does not clear them on mount", async () => {
@@ -270,7 +270,7 @@ describe("GenericProviderSettings", () => {
 			/>,
 		)
 
-		const apiKeyInput = screen.getByPlaceholderText("Enter API Key...")
+		const apiKeyInput = screen.getByPlaceholderText("输入 API 密钥...")
 		fireEvent.input(apiKeyInput, { target: { value: "partial-key" } })
 		fireEvent.blur(apiKeyInput)
 
@@ -386,7 +386,7 @@ describe("GenericProviderSettings", () => {
 			/>,
 		)
 
-		const apiKeyInput = screen.getByPlaceholderText("Enter API Key...")
+		const apiKeyInput = screen.getByPlaceholderText("输入 API 密钥...")
 		fireEvent.focus(apiKeyInput)
 		fireEvent.input(apiKeyInput, { target: { value: "max" } })
 

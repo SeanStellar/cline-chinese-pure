@@ -146,7 +146,7 @@ describe("SapAiCoreModelPicker Component", () => {
 			</ExtensionStateContextProvider>,
 		)
 
-		const label = screen.getByText("Model")
+		const label = screen.getByText("模型")
 		expect(label).toBeInTheDocument()
 
 		const dropdown = screen.getByRole("combobox")
@@ -161,7 +161,7 @@ describe("SapAiCoreModelPicker Component", () => {
 			</ExtensionStateContextProvider>,
 		)
 
-		const placeholderOption = screen.getByText("Select a model...")
+		const placeholderOption = screen.getByText("选择模型...")
 		expect(placeholderOption).toBeInTheDocument()
 	})
 
@@ -194,7 +194,7 @@ describe("SapAiCoreModelPicker Component", () => {
 		)
 
 		// Check for deployed models section header
-		const deployedHeader = screen.getByText("── Deployed Models ──")
+		const deployedHeader = screen.getByText("── 已部署模型 ──")
 		expect(deployedHeader).toBeInTheDocument()
 
 		// Check for deployed model options
@@ -217,7 +217,7 @@ describe("SapAiCoreModelPicker Component", () => {
 		)
 
 		// Check for not deployed models section header
-		const notDeployedHeader = screen.getByText("── Not Deployed Models ──")
+		const notDeployedHeader = screen.getByText("── 未部署模型 ──")
 		expect(notDeployedHeader).toBeInTheDocument()
 
 		// Check for not deployed model options
@@ -285,10 +285,10 @@ describe("SapAiCoreModelPicker Component", () => {
 		)
 
 		// Should not show deployed models section
-		expect(screen.queryByText("── Deployed Models ──")).not.toBeInTheDocument()
+		expect(screen.queryByText("── 已部署模型 ──")).not.toBeInTheDocument()
 
 		// Should show not deployed models section with all supported models
-		const notDeployedHeader = screen.getByText("── Not Deployed Models ──")
+		const notDeployedHeader = screen.getByText("── 未部署模型 ──")
 		expect(notDeployedHeader).toBeInTheDocument()
 
 		// All models should be marked as not deployed
@@ -314,11 +314,11 @@ describe("SapAiCoreModelPicker Component", () => {
 		)
 
 		// Should show deployed models section
-		const deployedHeader = screen.getByText("── Deployed Models ──")
+		const deployedHeader = screen.getByText("── 已部署模型 ──")
 		expect(deployedHeader).toBeInTheDocument()
 
 		// Should not show not deployed models section
-		expect(screen.queryByText("── Not Deployed Models ──")).not.toBeInTheDocument()
+		expect(screen.queryByText("── 未部署模型 ──")).not.toBeInTheDocument()
 
 		// All models should appear
 		expect(screen.getByText("gpt-4o")).toBeInTheDocument()
@@ -359,8 +359,8 @@ describe("SapAiCoreModelPicker Component", () => {
 		)
 
 		// Check that section headers are disabled options
-		const deployedHeader = screen.getByText("── Deployed Models ──")
-		const notDeployedHeader = screen.getByText("── Not Deployed Models ──")
+		const deployedHeader = screen.getByText("── 已部署模型 ──")
+		const notDeployedHeader = screen.getByText("── 未部署模型 ──")
 
 		expect(deployedHeader).toBeInTheDocument()
 		expect(notDeployedHeader).toBeInTheDocument()
@@ -386,7 +386,7 @@ describe("SapAiCoreModelPicker Component", () => {
 		expect(dropdown).toHaveValue("")
 
 		// Verify that the placeholder is shown when no model is selected
-		expect(screen.getByText("Select a model...")).toBeInTheDocument()
+		expect(screen.getByText("选择模型...")).toBeInTheDocument()
 	})
 
 	it("handles orchestration mode correctly", () => {
@@ -402,8 +402,8 @@ describe("SapAiCoreModelPicker Component", () => {
 		)
 
 		// In orchestration mode, should not show section headers
-		expect(screen.queryByText("── Deployed Models ──")).not.toBeInTheDocument()
-		expect(screen.queryByText("── Not Deployed Models ──")).not.toBeInTheDocument()
+		expect(screen.queryByText("── 已部署模型 ──")).not.toBeInTheDocument()
+		expect(screen.queryByText("── 未部署模型 ──")).not.toBeInTheDocument()
 
 		// Should show all supported models in flat list
 		expect(screen.getByText("anthropic--claude-3.5-sonnet")).toBeInTheDocument()

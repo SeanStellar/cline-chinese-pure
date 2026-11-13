@@ -84,7 +84,7 @@ function normalizeModelId(modelId: string): string {
 function toFeaturedModelCardEntry(
 	model: Pick<ClineRecommendedModel, "id" | "name" | "description" | "tags">,
 	fallbackLabel: string,
-	fallbackDescription = fallbackLabel === "FREE" ? "Free model" : "Recommended model",
+	fallbackDescription = fallbackLabel === "免费" ? "免费模型" : "推荐模型",
 ): FeaturedModelCardEntry | null {
 	if (!model.id) {
 		return null
@@ -160,13 +160,13 @@ const ClineModelPicker: React.FC<ClineModelPickerProps> = ({
 		() =>
 			isCloud
 				? [
-						{ id: "recommended", label: "Usage-Billing", models: recommendedModels },
+						{ id: "recommended", label: "按用量计费", models: recommendedModels },
 						...(includeClinePass ? [{ id: "clinePass" as const, label: "ClinePass", models: clinePassModels }] : []),
 						{ id: "clineCloud", label: "ClineFree", models: clineCloudModels },
 					]
 				: [
-						{ id: "recommended", label: "Recommended", models: recommendedModels },
-						{ id: "free", label: "Free", models: freeModels },
+						{ id: "recommended", label: "推荐", models: recommendedModels },
+						{ id: "free", label: "免费", models: freeModels },
 					],
 		[isCloud, includeClinePass, recommendedModels, freeModels, clinePassModels, clineCloudModels],
 	)
@@ -193,12 +193,12 @@ const ClineModelPicker: React.FC<ClineModelPickerProps> = ({
 			setClineFreeModels(free)
 			setClinePassModels(
 				(response.clinePass ?? [])
-					.map((model) => toFeaturedModelCardEntry(model, "", "Included with ClinePass"))
+					.map((model) => toFeaturedModelCardEntry(model, "", "包含在 ClinePass 中"))
 					.filter((model): model is FeaturedModelCardEntry => model !== null),
 			)
 			setClineCloudModels(
 				(response.clineCloud ?? [])
-					.map((model) => toFeaturedModelCardEntry(model, "FREE", "Free in the cloud with limited usage"))
+					.map((model) => toFeaturedModelCardEntry(model, "免费", "云端免费，用量有限"))
 					.filter((model): model is FeaturedModelCardEntry => model !== null),
 			)
 			return true
@@ -498,12 +498,11 @@ const ClineModelPicker: React.FC<ClineModelPickerProps> = ({
 
 				{/* Tabs */}
 				<TabsContainer style={{ marginTop: 4 }}>
-					<Tab active={activeTab === "recommended"} onClick={() => setActiveTab("recommended")}>
-						推荐
-					</Tab>
-					<Tab active={activeTab === "free"} onClick={() => setActiveTab("free")}>
-						免费
-					</Tab>
+					{featuredTabs.map((tab) => (
+						<Tab active={activeTab === tab.id} key={tab.id} onClick={() => setActiveTab(tab.id)}>
+							{tab.label}
+						</Tab>
+					))}
 				</TabsContainer>
 
 				{/* Model Cards */}

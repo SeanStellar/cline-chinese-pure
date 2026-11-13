@@ -53,8 +53,8 @@ describe("ContextWindow compact button", () => {
 			/>,
 		)
 
-		fireEvent.click(screen.getByRole("button", { name: /compact task/i }))
-		fireEvent.click(screen.getByRole("button", { name: /^compact$/i }))
+		fireEvent.click(screen.getByRole("button", { name: /压缩任务/ }))
+		fireEvent.click(screen.getByRole("button", { name: /^压缩$/ }))
 
 		expect(compactTask).toHaveBeenCalledTimes(1)
 		expect(onSendMessage).not.toHaveBeenCalled()
@@ -71,6 +71,6 @@ describe("ContextWindow compact button", () => {
 			/>,
 		)
 
-		expect(screen.getByRole("button", { name: /compact task/i })).toBeDisabled()
+		expect(screen.getByRole("button", { name: /压缩任务/ })).toBeDisabled()
 	})
 })

@@ -30,9 +30,9 @@ type WorkspaceRestoreAvailability =
 	| { state: "unavailable"; reason: "checkpoints_disabled" | "checkpoint_unavailable" }
 
 const WORKSPACE_RESTORE_TOOLTIPS: Record<WorkspaceRestoreAvailability["state"], string> = {
-	pending: "Checking for a workspace checkpoint…",
-	available: "Rewind conversation, reset code edits",
-	unavailable: "No workspace checkpoint was created for this message.",
+	pending: "正在检查工作区检查点…",
+	available: "回退对话并重置代码编辑",
+	unavailable: "此消息未创建工作区检查点。",
 }
 
 const UserMessage: React.FC<UserMessageProps> = ({ text, images, files, messageTs, canRestoreWorkspace }) => {
@@ -149,7 +149,7 @@ const UserMessage: React.FC<UserMessageProps> = ({ text, images, files, messageT
 			{workspaceRestorePending && (
 				<i aria-hidden="true" className="codicon codicon-loading codicon-modifier-spin text-xs" />
 			)}
-			{savingMode === "workspace" ? "Restoring..." : "Reset Code"}
+			{savingMode === "workspace" ? "恢复中..." : "重置代码"}
 		</button>
 	) : null
 

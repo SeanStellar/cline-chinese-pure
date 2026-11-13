@@ -14,7 +14,7 @@ describe("SearchResultsDisplay", () => {
 	it("renders search result content when present", () => {
 		render(<SearchResultsDisplay content="README.md: hello" isExpanded={false} onToggleExpand={vi.fn()} path="." />)
 
-		expect(screen.getByRole("button", { name: "Expand code block" })).toBeInTheDocument()
+		expect(screen.getByRole("button", { name: "展开代码块" })).toBeInTheDocument()
 	})
 
 	it("does not render undefined when multi-workspace results have no path", () => {

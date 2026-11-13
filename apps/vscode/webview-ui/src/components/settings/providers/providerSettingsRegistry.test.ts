@@ -103,7 +103,7 @@ describe("providerSettingsRegistry", () => {
 		).toEqual({
 			allowsCustomIds: false,
 			baseUrlField: {
-				label: "Base URL",
+				label: "基础 URL",
 				placeholder: "https://api.minimax.io/anthropic",
 			},
 			providerId: "minimax",
@@ -118,7 +118,7 @@ describe("providerSettingsRegistry", () => {
 		).toEqual({
 			allowsCustomIds: true,
 			baseUrlField: {
-				label: "Base URL",
+				label: "基础 URL",
 				placeholder: "https://api.together.xyz/v1",
 			},
 			providerId: "together",
@@ -175,7 +175,7 @@ describe("providerSettingsRegistry", () => {
 		expect(getFallbackGenericProviderSettings("minimax")).toEqual({
 			allowsCustomIds: false,
 			baseUrlField: {
-				label: "Base URL",
+				label: "基础 URL",
 				placeholder: "https://api.minimax.io/anthropic",
 			},
 			providerId: "minimax",
@@ -185,7 +185,7 @@ describe("providerSettingsRegistry", () => {
 		expect(getFallbackGenericProviderSettings("together")).toEqual({
 			allowsCustomIds: true,
 			baseUrlField: {
-				label: "Base URL",
+				label: "基础 URL",
 				placeholder: "https://api.together.xyz/v1",
 			},
 			providerId: "together",

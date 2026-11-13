@@ -33,7 +33,7 @@ describe("Navbar", () => {
 		const startNewTask = vi.fn().mockResolvedValue(true)
 		render(<Navbar startNewTask={startNewTask} />)
 
-		fireEvent.click(screen.getByRole("button", { name: "New Task" }))
+		fireEvent.click(screen.getByRole("button", { name: "新任务" }))
 
 		await vi.waitFor(() => expect(startNewTask).toHaveBeenCalledWith("navbar"))
 		expect(navigateToChat).toHaveBeenCalledTimes(1)
@@ -43,7 +43,7 @@ describe("Navbar", () => {
 		const startNewTask = vi.fn().mockResolvedValue(false)
 		render(<Navbar startNewTask={startNewTask} />)
 
-		fireEvent.click(screen.getByRole("button", { name: "New Task" }))
+		fireEvent.click(screen.getByRole("button", { name: "新任务" }))
 
 		await vi.waitFor(() => expect(startNewTask).toHaveBeenCalledWith("navbar"))
 		expect(navigateToChat).not.toHaveBeenCalled()

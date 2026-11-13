@@ -10,8 +10,8 @@ vi.mock("@/context/ClineAuthContext", () => ({
 	useClineAuth: () => mockAuth,
 }))
 
-const getSubscribeHref = () => screen.getByRole("link", { name: /get clinepass/i }).getAttribute("href")
-const querySubscribeLink = () => screen.queryByRole("link", { name: /get clinepass/i })
+const getSubscribeHref = () => screen.getByRole("link", { name: /获取 clinepass/i }).getAttribute("href")
+const querySubscribeLink = () => screen.queryByRole("link", { name: /获取 clinepass/i })
 
 describe("EntitlementError", () => {
 	beforeEach(() => {
@@ -21,7 +21,7 @@ describe("EntitlementError", () => {
 
 	it("shows friendly copy with the backend detail as muted support text", () => {
 		render(<EntitlementError message="Error 403: the user is not subscribed to required model plan" />)
-		expect(screen.getByText("This model requires a ClinePass subscription.")).toBeInTheDocument()
+		expect(screen.getByText("此模型需要 ClinePass 订阅。")).toBeInTheDocument()
 		expect(screen.getByText("Error 403: the user is not subscribed to required model plan")).toBeInTheDocument()
 	})
 
@@ -55,7 +55,7 @@ describe("EntitlementError", () => {
 		const retryFailedRequest = vi.fn().mockResolvedValue(true)
 		render(<EntitlementError retryFailedRequest={retryFailedRequest} />)
 		// VSCodeButton has no ARIA role in jsdom; click by label text instead.
-		fireEvent.click(screen.getByText("Retry Request"))
+		fireEvent.click(screen.getByText("重试请求"))
 		expect(retryFailedRequest).toHaveBeenCalledTimes(1)
 	})
 })

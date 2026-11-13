@@ -95,13 +95,13 @@ describe.each([
 	{
 		name: "QwenProvider",
 		Provider: QwenProvider,
-		label: "Alibaba API Line",
+		label: "阿里云 API 线路",
 		legacyKey: "qwenApiLine",
 	},
 	{
 		name: "MoonshotProvider",
 		Provider: MoonshotProvider,
-		label: "Moonshot Entrypoint",
+		label: "Moonshot 入口",
 		legacyKey: "moonshotApiLine",
 	},
 ] as const)("$name API line dropdown", ({ Provider, label, legacyKey }) => {
