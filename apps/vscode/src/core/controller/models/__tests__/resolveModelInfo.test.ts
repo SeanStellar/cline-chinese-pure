@@ -228,12 +228,13 @@ describe("resolveModelInfo", () => {
 		expect(catalog.resolveModels).toHaveBeenCalledTimes(1)
 	})
 
-	it("returns unknown when both the peek and resolveModels yield nothing", async () => {
+	it("falls back to the global catalog when the peek and resolveModels yield nothing", async () => {
 		const { resolveModelInfo } = await import("../resolveModelInfo")
 		const store = makeStore({ providerId: parseProviderId("deepseek") })
 		const catalog = makeCatalog()
 		// Default peek mock returns undefined; default resolveModels mock
-		// returns an empty catalog with no default model.
+		// returns an empty catalog with no default model. The bundled global
+		// catalog can still identify the model by id.
 
 		const response = await resolveModelInfo(makeController(store, catalog), {
 			providerId: "deepseek",
@@ -243,9 +244,9 @@ describe("resolveModelInfo", () => {
 		expect(response).toMatchObject({
 			providerId: "deepseek",
 			modelId: "deepseek-v4-pro",
-			source: "unknown",
+			source: "global-catalog",
 		})
-		expect(response.modelInfo).toBeUndefined()
+		expect(response.modelInfo).toBeDefined()
 		expect(catalog.resolveModels).toHaveBeenCalledTimes(1)
 	})
 

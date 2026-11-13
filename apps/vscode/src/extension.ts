@@ -346,7 +346,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						}
 						mentions.push(`@${relative}`)
 					} catch (error) {
-						console.error("Failed to resolve selected path for Cline input:", error)
+						Logger.error("Failed to resolve selected path for Cline input:", error)
 					}
 				}
 				if (mentions.length > 0) {
