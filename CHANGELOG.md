@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.1.36] - 2026-11-13
+
+### Changed
+
+- 发布到 VS Code Marketplace，发布者为 `seanstellar`，扩展 ID 改为 `seanstellar.cline-chinese`。
+- 清理 README 中的推广内容，更新仓库与反馈链接。
+
 ## [4.1.35] - 2026-11-13
 
 ### Changed

@@ -28,10 +28,10 @@ cline-chinese纯净版 是基于 [Cline](https://github.com/cline/cline) 与 Cli
 3. 或使用命令行：
 
 ```bash
-code --install-extension cline-chinese-4.1.35.vsix
+code --install-extension cline-chinese-4.1.36.vsix
 ```
 
-当前安装包的扩展 ID 为 `hybridtalentcomputing.cline-chinese`，升级会保留已有配置、供应商预设和使用统计。要求 VS Code 1.101 或更高版本；Cursor、Windsurf 等 VS Code 兼容编辑器也可以直接安装 VSIX。
+扩展 ID 为 `seanstellar.cline-chinese`。如果之前装过 `hybridtalentcomputing.cline-chinese` 的旧版，VS Code 会把本版本视为另一个扩展，两者配置不共享；建议先卸载旧版再安装。要求 VS Code 1.101 或更高版本；Cursor、Windsurf 等 VS Code 兼容编辑器也可以直接安装 VSIX。
 
 ## 配置模型
 
