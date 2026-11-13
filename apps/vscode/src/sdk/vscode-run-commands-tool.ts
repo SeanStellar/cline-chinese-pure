@@ -207,10 +207,11 @@ function createDetachedCommandLog(terminalCommand: string, existingLines: string
 type DetachReason = "user" | "timeout"
 
 function formatDetachedResult(logFilePath: string, output: string, reason: DetachReason): string {
+	const logHint = `这是部分输出；后续输出将重定向到此文件，您可以阅读该文件以查看进度：${logFilePath}`
 	return [
 		reason === "user"
-			? "用户选择继续操作，而此时该命令正在终端中启动或仍在运行。"
-			: `命令在 ${FOREGROUND_COMMAND_AUTO_PROCEED_MS / 1000} 秒后仍在启动或运行，因此 Cline Chinese 自动继续执行，同时使其在终端中保持运行。这是部分输出；后续输出将重定向到此文件，您可以阅读该文件以查看进度：${logFilePath}`,
+			? `用户选择继续操作，而此时该命令正在终端中启动或仍在运行。${logHint}`
+			: `命令在 ${FOREGROUND_COMMAND_AUTO_PROCEED_MS / 1000} 秒后仍在启动或运行，因此 Cline Chinese 自动继续执行，同时使其在终端中保持运行。${logHint}`,
 		output.length > 0 ? `输出:\n${output}` : "还没输出.",
 	].join("\n")
 }

@@ -563,13 +563,13 @@ describe("executeForeground — Proceed While Running", () => {
 
 		await vi.advanceTimersByTimeAsync(1)
 		const result = await resultPromise
-		expect(result).toContain("automatically proceeded")
-		expect(result).toContain("after 300 seconds")
+		expect(result).toContain("自动继续执行")
+		expect(result).toContain("300 秒后")
 		expect(result).not.toContain("The user chose")
 		expect(result).toContain("listening on :3000")
 		expect(coordinator.isRunning).toBe(false)
 
-		const logFilePath = /redirected to this file[^:]*: (.+)$/m.exec(result)?.[1]?.trim()
+		const logFilePath = /重定向到此文件[^：]*：\s*(.+)$/m.exec(result)?.[1]?.trim()
 		expect(logFilePath).toBeTruthy()
 		vi.useRealTimers()
 		complete({ exitCode: 0 })
@@ -597,9 +597,9 @@ describe("executeForeground — Proceed While Running", () => {
 		expect(coordinator.proceedWhileRunning()).toBe(1)
 		const result = await resultPromise
 
-		expect(result).toContain("still running")
+		expect(result).toContain("仍在运行")
 		expect(result).toContain("listening on :3000")
-		const logFilePath = /redirected to this file[^:]*: (.+)$/m.exec(result)?.[1]?.trim()
+		const logFilePath = /重定向到此文件[^：]*：\s*(.+)$/m.exec(result)?.[1]?.trim()
 		expect(logFilePath).toBeTruthy()
 
 		// The handle is unregistered once the tool call returns.
@@ -637,7 +637,7 @@ describe("executeForeground — Proceed While Running", () => {
 		await waitFor(() => coordinator.isRunning)
 		expect(coordinator.proceedWhileRunning()).toBe(1)
 		const result = await resultPromise
-		const logFilePath = /redirected to this file[^:]*: (.+)$/m.exec(result)?.[1]?.trim()
+		const logFilePath = /重定向到此文件[^：]*：\s*(.+)$/m.exec(result)?.[1]?.trim()
 		expect(logFilePath).toBeTruthy()
 
 		completeUnobserved()
@@ -669,7 +669,7 @@ describe("executeForeground — Proceed While Running", () => {
 		await waitFor(() => coordinator.isRunning)
 		expect(coordinator.proceedWhileRunning()).toBe(1)
 		const result = await resultPromise
-		const logFilePath = /redirected to this file[^:]*: (.+)$/m.exec(result)?.[1]?.trim()
+		const logFilePath = /重定向到此文件[^：]*：\s*(.+)$/m.exec(result)?.[1]?.trim()
 		expect(logFilePath).toBeTruthy()
 
 		complete({ terminalClosed: true })
@@ -701,7 +701,7 @@ describe("executeForeground — Proceed While Running", () => {
 		await waitFor(() => coordinator.isRunning)
 		expect(coordinator.proceedWhileRunning()).toBe(1)
 		const result = await resultPromise
-		const logFilePath = /redirected to this file[^:]*: (.+)$/m.exec(result)?.[1]?.trim()
+		const logFilePath = /重定向到此文件[^：]*：\s*(.+)$/m.exec(result)?.[1]?.trim()
 		expect(logFilePath).toBeTruthy()
 
 		fail(new Error("stream failed"))
@@ -731,7 +731,7 @@ describe("executeForeground — Proceed While Running", () => {
 		await waitFor(() => coordinator.isRunning)
 		expect(coordinator.proceedWhileRunning()).toBe(1)
 		const result = await resultPromise
-		const logFilePath = /redirected to this file[^:]*: (.+)$/m.exec(result)?.[1]?.trim()
+		const logFilePath = /重定向到此文件[^：]*：\s*(.+)$/m.exec(result)?.[1]?.trim()
 		expect(logFilePath).toBeTruthy()
 
 		emitLine("x".repeat(PROCEED_LOG_MAX_BYTES))
@@ -776,8 +776,8 @@ describe("executeForeground — Proceed While Running", () => {
 		expect(coordinator.proceedWhileRunning()).toBe(2)
 		const [firstResult, secondResult] = await Promise.all([firstPromise, secondPromise])
 
-		const firstLog = /redirected to this file[^:]*: (.+)$/m.exec(firstResult)?.[1]?.trim()
-		const secondLog = /redirected to this file[^:]*: (.+)$/m.exec(secondResult)?.[1]?.trim()
+		const firstLog = /重定向到此文件[^：]*：\s*(.+)$/m.exec(firstResult)?.[1]?.trim()
+		const secondLog = /重定向到此文件[^：]*：\s*(.+)$/m.exec(secondResult)?.[1]?.trim()
 		expect(firstLog).toBeTruthy()
 		expect(secondLog).toBeTruthy()
 		expect(firstLog).not.toBe(secondLog)
@@ -941,12 +941,12 @@ describe("executeForeground — Proceed While Running", () => {
 		// resolves as detached instead of re-blocking the turn.
 		expect(coordinator.proceedWhileRunning()).toBe(1)
 		const result = await resultPromise
-		expect(result).toContain("still running")
+		expect(result).toContain("仍在运行")
 		expect(coordinator.isRunning).toBe(false)
 
 		// The tool result settles before terminal acquisition. Once the bounded
 		// acquisition finishes, the approved command starts and streams to the log.
-		const logFilePath = /redirected to this file[^:]*: (.+)$/m.exec(result)?.[1]?.trim()
+		const logFilePath = /重定向到此文件[^：]*：\s*(.+)$/m.exec(result)?.[1]?.trim()
 		expect(logFilePath).toBeTruthy()
 		releaseTerminal()
 		await waitFor(() => process.listenerCount("line") > 0)
@@ -987,7 +987,7 @@ describe("executeForeground — Proceed While Running", () => {
 		)
 		expect(coordinator.proceedWhileRunning()).toBe(1)
 		const result = await resultPromise
-		const logFilePath = /redirected to this file[^:]*: (.+)$/m.exec(result)?.[1]?.trim()
+		const logFilePath = /重定向到此文件[^：]*：\s*(.+)$/m.exec(result)?.[1]?.trim()
 		expect(logFilePath).toBeTruthy()
 		expect(coordinator.isRunning).toBe(false)
 
@@ -1018,7 +1018,7 @@ describe("executeForeground — Proceed While Running", () => {
 		await waitFor(() => process.listenerCount("line") > 0)
 		expect(coordinator.proceedWhileRunning()).toBe(1)
 		const result = await resultPromise
-		const logFilePath = /redirected to this file[^:]*: (.+)$/m.exec(result)?.[1]?.trim()
+		const logFilePath = /重定向到此文件[^：]*：\s*(.+)$/m.exec(result)?.[1]?.trim()
 		expect(logFilePath).toBeTruthy()
 
 		fail(new Error("terminal process failed"))
@@ -1072,12 +1072,12 @@ describe("executeForeground — Proceed While Running", () => {
 		// resolve detached — the late one must not keep the turn blocked.
 		expect(coordinator.proceedWhileRunning()).toBe(2)
 		const [firstResult, secondResult] = await Promise.all([firstPromise, secondPromise])
-		expect(firstResult).toContain("still running")
-		expect(secondResult).toContain("still running")
+		expect(firstResult).toContain("仍在运行")
+		expect(secondResult).toContain("仍在运行")
 		expect(coordinator.isRunning).toBe(false)
 
 		const logFilePaths = [firstResult, secondResult].map((result) =>
-			/redirected to this file[^:]*: (.+)$/m.exec(result)?.[1]?.trim(),
+			/重定向到此文件[^：]*：\s*(.+)$/m.exec(result)?.[1]?.trim(),
 		)
 		for (const logFilePath of logFilePaths) {
 			expect(logFilePath).toBeTruthy()
@@ -1111,7 +1111,7 @@ describe("executeForeground — Proceed While Running", () => {
 
 		expect(coordinator.proceedWhileRunning()).toBe(1)
 		const result = await resultPromise
-		const logFilePath = /redirected to this file[^:]*: (.+)$/m.exec(result)?.[1]?.trim()
+		const logFilePath = /重定向到此文件[^：]*：\s*(.+)$/m.exec(result)?.[1]?.trim()
 		expect(logFilePath).toBeTruthy()
 
 		// A single line larger than the whole cap must not be written at all —
@@ -1150,7 +1150,7 @@ describe("executeForeground — Proceed While Running", () => {
 
 		expect(coordinator.proceedWhileRunning()).toBe(1)
 		const result = await resultPromise
-		const logFilePath = /redirected to this file[^:]*: (.+)$/m.exec(result)?.[1]?.trim()
+		const logFilePath = /重定向到此文件[^：]*：\s*(.+)$/m.exec(result)?.[1]?.trim()
 		expect(logFilePath).toBeTruthy()
 		complete({ exitCode: 0 })
 
@@ -1187,7 +1187,7 @@ describe("executeForeground — Proceed While Running", () => {
 		expect(result).toContain("before detach")
 		expect(result).not.toContain("after detach")
 
-		const logFilePath = /redirected to this file[^:]*: (.+)$/m.exec(result)?.[1]?.trim()
+		const logFilePath = /重定向到此文件[^：]*：\s*(.+)$/m.exec(result)?.[1]?.trim()
 		complete({ exitCode: 0 })
 		await waitFor(() => {
 			try {
