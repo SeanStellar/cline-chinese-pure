@@ -3,16 +3,13 @@ import { combineCommandSequences } from "@shared/combineCommandSequences"
 import { combineHookSequences } from "@shared/combineHookSequences"
 import { getApiMetrics, getLastApiReqTotalTokens } from "@shared/getApiMetrics"
 import { BooleanRequest, StringRequest } from "@shared/proto/cline/common"
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useMount } from "react-use"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useShowNavbar } from "@/context/PlatformContext"
 import { useNormalizedApiConfiguration } from "@/hooks/useNormalizedApiConfiguration"
 import { FileServiceClient, UiServiceClient } from "@/services/grpc-client"
-import { sendBatch } from "../loomloom/batch-api"
 import { Navbar } from "../menu/Navbar"
-import { OPEN_BATCH_MODE_EVENT } from "../promo/promoContent"
-import AutoApproveBar from "./auto-approve-menu/AutoApproveBar"
 // Import utilities and hooks from the new structure
 import {
 	ActionButtons,
@@ -36,11 +33,6 @@ import {
 	isPendingResponseUnconfirmed,
 	withPendingUserMessage,
 } from "./chat-view/utils/pendingResponse"
-
-// Keep the ordinary Plan/Act startup free of the Batch editor and market UI.
-const BatchConversation = lazy(() =>
-	import("../loomloom/BatchConversation").then((module) => ({ default: module.BatchConversation })),
-)
 
 interface ChatViewProps {
 	isHidden: boolean
@@ -66,9 +58,6 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		checkpointRestoreInput,
 		queuedPrompts,
 		turnState,
-		batchResultToOpen,
-		clearBatchResult,
-		loomLoomBatch,
 		setShowMarketplace,
 		cloudSessionsEnabled,
 		cloudTaskTarget,
@@ -76,35 +65,8 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	} = useExtensionState()
 	const isProdHostedApp = userInfo?.apiBaseUrl === "https://app.cline.bot"
 	const shouldShowQuickWins = isProdHostedApp && (!taskHistory || taskHistory.length < QUICK_WINS_HISTORY_THRESHOLD)
-	const batchMode = !!loomLoomBatch?.enabled
-	const [batchError, setBatchError] = useState("")
-	const [savedResult, setSavedResult] = useState<{ title: string; content: string } | null>(null)
-
-	// When a batch result is opened from the task history, switch into Batch
-	// mode and show the result tab pre-populated with the saved result.
-	useEffect(() => {
-		if (!batchResultToOpen) return
-		setSavedResult(batchResultToOpen)
-		clearBatchResult()
-	}, [batchResultToOpen, clearBatchResult])
-
-	const handleBatchModeChange = useCallback(
-		(next: boolean, target: "plan" | "act" = "act") => {
-			setBatchError("")
-			void sendBatch({ action: "mode", mode: next ? "batch" : target }, loomLoomBatch?.taskId).catch((e) =>
-				setBatchError(String(e.message || e)),
-			)
-		},
-		[loomLoomBatch?.taskId],
-	)
-
-	// The new-user / daily promo popup's "试用 Batch 模式" action switches the
-	// already-mounted main UI into Batch mode instead of reloading the panel.
-	useEffect(() => {
-		const openBatchMode = () => handleBatchModeChange(true)
-		window.addEventListener(OPEN_BATCH_MODE_EVENT, openBatchMode)
-		return () => window.removeEventListener(OPEN_BATCH_MODE_EVENT, openBatchMode)
-	}, [handleBatchModeChange])
+	// Batch mode is no longer exposed; keep the prop surface for the shared input section.
+	const batchMode = false
 
 	// Use custom hooks for state management
 	const chatState = useChatState(messages)
@@ -259,16 +221,6 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 
 	// Use message handlers hook
 	const messageHandlers = useMessageHandlers(messages, chatState)
-	// The chat transcript changes for every streamed token. Keep the Batch
-	// footer's callbacks stable so its input validation and market UI only
-	// render when the Batch snapshot itself changes.
-	const batchSendRef = useRef(messageHandlers.handleSendMessage)
-	batchSendRef.current = messageHandlers.handleSendMessage
-	const handleBatchChat = useCallback((text: string, files: string[]) => batchSendRef.current(text, [], files), [])
-	const handleBatchMarket = useCallback(() => {
-		window.dispatchEvent(new CustomEvent("loomloom-open-market"))
-		setShowMarketplace(true)
-	}, [setShowMarketplace])
 
 	const { selectedModelInfo } = useNormalizedApiConfiguration(mode)
 
@@ -441,19 +393,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	return (
 		<ChatLayout isHidden={isHidden}>
 			<div className="flex flex-col flex-1 overflow-hidden">
-				{batchError && (
-					<p className="px-3 text-error" role="alert">
-						{batchError}
-					</p>
-				)}
 				{showNavbar && <Navbar startNewTask={messageHandlers.startNewTask} />}
-				{savedResult && (
-					<details className="p-3">
-						<summary>{savedResult.title}（旧版批量结果）</summary>
-						<pre className="whitespace-pre-wrap">{savedResult.content}</pre>
-						<button onClick={() => setSavedResult(null)}>关闭</button>
-					</details>
-				)}
 				<>
 					{task ? (
 						<TaskSection
@@ -480,32 +420,17 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 					)}
 					{task && (
 						<MessagesArea
-							batchEvents={loomLoomBatch?.events}
 							chatState={chatState}
 							groupedMessages={groupedMessages}
 							messageHandlers={messageHandlers}
 							modifiedMessages={modifiedMessages}
 							scrollBehavior={scrollBehavior}
 							task={task}
-							timelineFooter={
-								loomLoomBatch ? (
-									<Suspense fallback={<div className="p-3 text-sm">正在加载 Batch 控件…</div>}>
-										<BatchConversation
-											key={`${loomLoomBatch.taskId}:${loomLoomBatch.id}:${loomLoomBatch.rows[0]?.id ?? "empty"}`}
-											onChat={handleBatchChat}
-											onMarket={handleBatchMarket}
-											session={loomLoomBatch}
-											showEvents={false}
-										/>
-									</Suspense>
-								) : undefined
-							}
 						/>
 					)}
 				</>
 			</div>
 			<footer className="bg-(--vscode-sidebar-background) flex flex-col" style={{ gridRow: "2" }}>
-				{!hideAutoApprove && <AutoApproveBar />}
 				<ActionButtons
 					chatState={chatState}
 					messageHandlers={messageHandlers}
@@ -516,9 +441,9 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				{/* <QueuedPrompts items={queuedPrompts} /> */}
 				<InputSection
 					batchMode={batchMode}
+					hideAutoApprove={hideAutoApprove}
 					chatState={chatState}
 					messageHandlers={messageHandlers}
-					onBatchModeChange={handleBatchModeChange}
 					placeholderText={placeholderText}
 					scrollBehavior={scrollBehavior}
 					selectFilesAndImages={selectFilesAndImages}

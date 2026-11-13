@@ -129,6 +129,12 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ task, messages, ch
 		return null
 	}
 
+	// When cancelling is the only available action, the composer's send slot
+	// shows a stop icon instead of a full-width footer button.
+	if (!primaryText && secondaryText === "取消" && secondaryAction === "cancel") {
+		return null
+	}
+
 	const opacity = canInteract || isStreaming ? 1 : 0.5
 
 	return (

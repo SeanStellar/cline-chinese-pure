@@ -12,25 +12,32 @@ vi.mock("@/context/ExtensionStateContext", () => ({
 }))
 
 vi.mock("@/components/chat/ChatTextArea", () => ({
-	default: React.forwardRef<HTMLTextAreaElement, { sendingDisabled: boolean; onSend: () => void }>(
-		({ sendingDisabled, onSend }, ref) => (
-			<>
-				<textarea
-					aria-label="composer"
-					disabled={sendingDisabled}
-					onKeyDown={(event) => {
-						if (event.key === "Enter" && !sendingDisabled) {
-							onSend()
-						}
-					}}
-					ref={ref}
-				/>
+	default: React.forwardRef<
+		HTMLTextAreaElement,
+		{ sendingDisabled: boolean; onSend: () => void; onCancel?: () => void; showCancel?: boolean }
+	>(({ sendingDisabled, onSend, onCancel, showCancel }, ref) => (
+		<>
+			<textarea
+				aria-label="composer"
+				disabled={sendingDisabled}
+				onKeyDown={(event) => {
+					if (event.key === "Enter" && !sendingDisabled) {
+						onSend()
+					}
+				}}
+				ref={ref}
+			/>
+			{showCancel && onCancel ? (
+				<button onClick={onCancel} type="button">
+					Cancel
+				</button>
+			) : (
 				<button disabled={sendingDisabled} onClick={onSend} type="button">
 					Send
 				</button>
-			</>
-		),
-	),
+			)}
+		</>
+	)),
 }))
 
 function makeChatState(overrides: Partial<ChatState> = {}): ChatState {
@@ -59,14 +66,15 @@ function makeScrollBehavior(): ScrollBehavior {
 }
 
 describe("InputSection", () => {
-	it("allows submit while the turn is streaming so the message can be queued", () => {
+	it("keeps Enter queueing while a streaming turn shows the cancel control", () => {
 		mockTurnState.mockReturnValue({ phase: "streaming", seq: 1 })
 		const handleSendMessage = vi.fn().mockResolvedValue(undefined)
+		const executeButtonAction = vi.fn().mockResolvedValue(true)
 
 		render(
 			<InputSection
 				chatState={makeChatState({ sendingDisabled: true })}
-				messageHandlers={{ handleSendMessage } as unknown as MessageHandlers}
+				messageHandlers={{ handleSendMessage, executeButtonAction } as unknown as MessageHandlers}
 				placeholderText="Type a message"
 				scrollBehavior={makeScrollBehavior()}
 				selectFilesAndImages={vi.fn()}
@@ -76,14 +84,30 @@ describe("InputSection", () => {
 
 		const composer = screen.getByLabelText("composer")
 		expect(composer).not.toBeDisabled()
-		const sendButton = screen.getByRole("button", { name: "Send" })
-		expect(sendButton).not.toBeDisabled()
+		expect(screen.queryByRole("button", { name: "Send" })).not.toBeInTheDocument()
+		expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument()
 
-		fireEvent.click(sendButton)
-		expect(handleSendMessage).toHaveBeenCalledWith("queue this", [], [])
-		handleSendMessage.mockClear()
 		fireEvent.keyDown(composer, { key: "Enter" })
 		expect(handleSendMessage).toHaveBeenCalledWith("queue this", [], [])
+	})
+
+	it("cancels a streaming turn from the composer send slot", () => {
+		mockTurnState.mockReturnValue({ phase: "streaming", seq: 1 })
+		const executeButtonAction = vi.fn().mockResolvedValue(true)
+
+		render(
+			<InputSection
+				chatState={makeChatState({ sendingDisabled: true })}
+				messageHandlers={{ executeButtonAction } as unknown as MessageHandlers}
+				placeholderText="Type a message"
+				scrollBehavior={makeScrollBehavior()}
+				selectFilesAndImages={vi.fn()}
+				shouldDisableFilesAndImages={false}
+			/>,
+		)
+
+		fireEvent.click(screen.getByRole("button", { name: "Cancel" }))
+		expect(executeButtonAction).toHaveBeenCalledWith({ type: "cancel" })
 	})
 
 	it("allows submit while approval is pending so typed feedback can reject the approval", () => {

@@ -10,11 +10,11 @@ const PreferredLanguageSetting: React.FC = () => {
 	return (
 		<div>
 			<label className="block mb-1 text-base font-medium" htmlFor="preferred-language-dropdown">
-				首选语言
+				语言
 			</label>
 			<Select
 				onValueChange={(newLanguage) => updateSetting("preferredLanguage", newLanguage)}
-				value={preferredLanguage || "English"}>
+				value={preferredLanguage || "Simplified Chinese - 简体中文"}>
 				<SelectTrigger className="w-full" id="preferred-language-dropdown">
 					<SelectValue />
 				</SelectTrigger>
@@ -26,7 +26,7 @@ const PreferredLanguageSetting: React.FC = () => {
 					))}
 				</SelectContent>
 			</Select>
-			<p className="text-sm text-description mt-1">Cline Chinese 用于沟通的语言。</p>
+			<p className="text-sm text-description mt-1">AI 回复以及界面中可翻译的文案都会使用该语言。</p>
 		</div>
 	)
 }

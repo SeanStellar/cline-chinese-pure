@@ -36,6 +36,7 @@ service FileService {
 
   // Convert URIs to workspace-relative paths
   rpc getRelativePaths(RelativePathsRequest) returns (RelativePaths);
+  rpc readImageDataUrl(StringRequest) returns (String);
 
   // Search for files in the workspace with fuzzy matching
   rpc searchFiles(FileSearchRequest) returns (FileSearchResults);

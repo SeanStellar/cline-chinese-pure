@@ -10,11 +10,11 @@ import { UiServiceClient } from "./services/grpc-client"
 
 // These screens are absent from the normal chat path. Load them on first use,
 // while keeping ChatView mounted so drafts and in-flight approvals survive.
-const AccountView = lazy(() => import("./components/account/AccountView"))
 const HistoryView = lazy(() => import("./components/history/HistoryView"))
 const MarketplaceView = lazy(() => import("./components/marketplace/MarketplaceView"))
 const McpView = lazy(() => import("./components/mcp/configuration/McpConfigurationView"))
 const OnboardingView = lazy(() => import("./components/onboarding/OnboardingView"))
+const UsageView = lazy(() => import("./components/usage/UsageView"))
 const SettingsView = lazy(() => import("./components/settings/SettingsView"))
 const WorktreesView = lazy(() => import("./components/worktrees/WorktreesView"))
 
@@ -62,7 +62,7 @@ const AppContent = () => {
 		showSettings,
 		settingsNavigationRequest,
 		showHistory,
-		showAccount,
+		showUsage,
 		showWorktrees,
 		showAnnouncement,
 		setShowAnnouncement,
@@ -71,13 +71,13 @@ const AppContent = () => {
 		navigateToHistory,
 		hideSettings,
 		hideHistory,
-		hideAccount,
+		hideUsage,
 		hideWorktrees,
 		closeMarketplaceView,
 		hideAnnouncement,
 	} = useExtensionState()
 
-	const { clineUser, organizations, activeOrganization, accountSwitch, accountSwitchError } = useClineAuth()
+	const { clineUser, accountSwitch, accountSwitchError } = useClineAuth()
 
 	const showUpdateAnnouncementModal = useCallback(() => {
 		setShowAnnouncement(true)
@@ -132,20 +132,17 @@ const AppContent = () => {
 					/>
 				)}
 				{showMcp && <McpView initialTab={mcpTab} onDone={closeMcpView} />}
-				{showAccount && (
-					<AccountView
-						activeOrganization={activeOrganization}
-						clineUser={clineUser}
-						onDone={hideAccount}
-						organizations={organizations}
-					/>
+				{showUsage && (
+					<Suspense fallback={<LoadingView />}>
+						<UsageView onDone={hideUsage} />
+					</Suspense>
 				)}
 				{showWorktrees && <WorktreesView onDone={hideWorktrees} />}
 			</Suspense>
 			{/* Do not conditionally load ChatView, it's expensive and there's state we don't want to lose (user input, disableInput, askResponse promise, etc.) */}
 			<ChatView
 				hideAnnouncement={hideAnnouncement}
-				isHidden={showSettings || showHistory || showMarketplace || showMcp || showAccount || showWorktrees}
+				isHidden={showSettings || showHistory || showMarketplace || showMcp || showUsage || showWorktrees}
 				showAnnouncement={showAnnouncement}
 				showHistoryView={navigateToHistory}
 			/>

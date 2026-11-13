@@ -1,25 +1,33 @@
 import { TooltipContent, TooltipTrigger } from "@radix-ui/react-tooltip"
-import { azureOpenAiDefaultApiVersion, type OpenAiCompatibleModelInfo, openAiModelInfoSafeDefaults } from "@shared/api"
-import { OpenAiModelsRequest } from "@shared/proto/cline/models"
+import { azureOpenAiDefaultApiVersion } from "@shared/api"
+import { OpenAiModelsRequest, ResolveModelInfoRequest } from "@shared/proto/cline/models"
+import { UpdateSettingsRequest } from "@shared/proto/cline/state"
 import { fromProtobufModelInfo } from "@shared/proto-conversions/models/typeConversion"
 import type { Mode } from "@shared/storage/types"
 import { VSCodeButton, VSCodeCheckbox, VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { Tooltip } from "@/components/ui/tooltip"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useDynamicProviderSelection } from "@/hooks/useDynamicProviderSelection"
 import { fromProtobufProviderModelOverrides, type ProviderModelOverrides, useProviderConfig } from "@/hooks/useProviderConfig"
-import { ModelsServiceClient } from "@/services/grpc-client"
-import { getAsVar, VSC_DESCRIPTION_FOREGROUND } from "@/utils/vscStyles"
-import { ApiKeyField } from "../common/ApiKeyField"
+import { ModelsServiceClient, StateServiceClient } from "@/services/grpc-client"
 import { BaseUrlField } from "../common/BaseUrlField"
 import { DebouncedTextField } from "../common/DebouncedTextField"
-import { ModelInfoView } from "../common/ModelInfoView"
 import { DropdownContainer } from "../common/ModelSelector"
-import ReasoningEffortSelector from "../ReasoningEffortSelector"
-import { reasoningEffortPatch } from "../utils/reasoningEffort"
 import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
-import { useProviderApiKeyField } from "../utils/useProviderApiKeyField"
+import { ProviderPresetManager } from "./ProviderPresetManager"
+import {
+	createPresetModel,
+	createProviderPresetId,
+	type DetectedModelParameters,
+	inferModelParameters,
+	parseProviderPresets,
+	presetModelOverrides,
+	type ProviderPreset,
+	type ProviderPresetApiFormat,
+	type ProviderPresetModel,
+	serializeProviderPresets,
+} from "./providerPresets"
 
 /**
  * Props for the OpenAICompatibleProvider component
@@ -34,34 +42,36 @@ interface OpenAICompatibleProviderProps {
 /**
  * The OpenAI Compatible provider configuration component
  */
-export const OpenAICompatibleProvider = ({
-	providerId,
-	showModelOptions,
-	isPopup,
-	currentMode,
-}: OpenAICompatibleProviderProps) => {
-	const { apiConfiguration, remoteConfigSettings } = useExtensionState()
+export const OpenAICompatibleProvider = ({ providerId, currentMode }: OpenAICompatibleProviderProps) => {
+	const { apiConfiguration, remoteConfigSettings, providerPresets } = useExtensionState()
 	const { handleFieldChange, handleModeFieldChange } = useApiConfigurationHandlers()
-	const { config, write, commitSelection, reasoningEffort } = useProviderConfig(providerId)
+	const { config, write, commitSelection } = useProviderConfig(providerId)
 
-	const [modelConfigurationSelected, setModelConfigurationSelected] = useState(false)
 	const [isCustomOpenAiModelEntryVisible, setIsCustomOpenAiModelEntryVisible] = useState(false)
 	const [availableOpenAiModels, setAvailableOpenAiModels] = useState<string[]>([])
 	const [isRefreshingOpenAiModels, setIsRefreshingOpenAiModels] = useState(false)
 	const [openAiModelsError, setOpenAiModelsError] = useState<string | undefined>(undefined)
-	const [modelFieldErrors, setModelFieldErrors] = useState<Partial<Record<NumericModelOverrideKey, string>>>({})
+	const [presetList, setPresetList] = useState<ProviderPreset[]>(() => parseProviderPresets(providerPresets))
+	const [activePresetId, setActivePresetId] = useState<string | null>(() => {
+		try {
+			return localStorage.getItem("cline-chinese.active-provider-preset.v1")
+		} catch {
+			return null
+		}
+	})
+	const [presetBusy, setPresetBusy] = useState(false)
+	const [presetError, setPresetError] = useState("")
+
+	useEffect(() => {
+		setPresetList(parseProviderPresets(providerPresets))
+	}, [providerPresets])
 	// Only the built-in "openai" provider stores its API key in the legacy
 	// ApiConfiguration field; custom providers keep it in their per-provider
 	// config (available only as a masked length), so there is no plaintext key
 	// to seed the model-refresh request with.
 	const legacyOpenAiApiKey = providerId === "openai" ? apiConfiguration?.openAiApiKey || "" : ""
-	const latestOpenAiBaseUrlRef = useRef(config?.baseUrl || "")
 	const latestOpenAiApiKeyRef = useRef(legacyOpenAiApiKey)
 	const openAiModelsRequestRef = useRef(0)
-
-	useEffect(() => {
-		latestOpenAiBaseUrlRef.current = config?.baseUrl || ""
-	}, [config?.baseUrl])
 
 	useEffect(() => {
 		latestOpenAiApiKeyRef.current = legacyOpenAiApiKey
@@ -86,10 +96,6 @@ export const OpenAICompatibleProvider = ({
 	const selectedModelInfo = committedSelection?.modelInfo
 		? fromProtobufModelInfo(committedSelection.modelInfo)
 		: legacySelectedModelInfo
-	// The Model Configuration section reads/writes the resolved model info.
-	// OpenAiCompatibleModelInfo only adds optional fields over ModelInfo, so a
-	// resolved ModelInfo satisfies it structurally.
-	const openAiModelInfo: OpenAiCompatibleModelInfo = selectedModelInfo ?? openAiModelInfoSafeDefaults
 	const selectedModelOverrides = fromProtobufProviderModelOverrides(committedSelection?.overrides) ?? {}
 	// Plan and Act have independent selections, so each mode gets its own
 	// pending accumulator: a pending commit in one mode must never become
@@ -139,71 +145,8 @@ export const OpenAICompatibleProvider = ({
 		[commitSelection, currentMode, handleProviderConfigWriteError, providerId],
 	)
 
-	const updateModelOverride = useCallback(
-		<K extends keyof ProviderModelOverrides>(key: K, value: ProviderModelOverrides[K] | undefined) => {
-			// Prefer this mode's pending model id: while a model-id commit is
-			// still round-tripping, `selectedModelId` reads back the old id
-			// and an edit would be committed against the model just switched
-			// away from.
-			const pending = selectedModelOverridesRef.current[currentMode]
-			const modelId = (pending.modelId ?? selectedModelId)?.trim()
-			if (!modelId) {
-				return
-			}
-
-			const currentOverrides = pending.modelId === modelId ? pending.overrides : {}
-			const nextOverrides = { ...currentOverrides }
-			if (value === undefined) {
-				delete nextOverrides[key]
-			} else {
-				Object.assign(nextOverrides, { [key]: value })
-			}
-			selectedModelOverridesRef.current[currentMode] = { modelId, overrides: nextOverrides }
-			commitOpenAiSelection(modelId, nextOverrides)
-		},
-		[commitOpenAiSelection, currentMode, selectedModelId],
-	)
-
-	const updateNumericModelOverride = useCallback(
-		(key: NumericModelOverrideKey, label: string, value: string) => {
-			const parsed = parseOptionalFiniteNumber(value)
-			if (!parsed.valid) {
-				setModelFieldErrors((current) => ({ ...current, [key]: `${label} 必须是有效的数字。` }))
-				return
-			}
-			setModelFieldErrors((current) => {
-				const next = { ...current }
-				delete next[key]
-				return next
-			})
-			// Debounced fields fire with their initial value on mount and on
-			// model/mode switches; committing that echo would persist resolved
-			// catalog values as user overrides. Only commit actual edits.
-			// Compare against the pending override when one is in flight so a
-			// quick revert during a commit round-trip is not mistaken for an
-			// echo of the (stale) displayed value.
-			const pending = selectedModelOverridesRef.current[currentMode]
-			const pendingOverrides = pending.modelId === selectedModelId?.trim() ? pending.overrides : undefined
-			const effectiveValue =
-				pendingOverrides && Object.hasOwn(pendingOverrides, key)
-					? displayedModelNumber(pendingOverrides[key] as number | undefined)
-					: displayedModelNumber(openAiModelInfo?.[key])
-			if (parsed.value === effectiveValue) {
-				return
-			}
-			updateModelOverride(key, parsed.value)
-		},
-		[updateModelOverride, currentMode, openAiModelInfo, selectedModelId],
-	)
-
-	// Debounced function to refresh OpenAI models (prevents excessive API calls while typing)
-	const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
-
 	useEffect(() => {
 		return () => {
-			if (debounceTimerRef.current) {
-				clearTimeout(debounceTimerRef.current)
-			}
 			openAiModelsRequestRef.current += 1
 		}
 	}, [])
@@ -254,25 +197,12 @@ export const OpenAICompatibleProvider = ({
 		[providerId],
 	)
 
-	const debouncedRefreshOpenAiModels = useCallback(
-		(baseUrl?: string, apiKey?: string) => {
-			if (debounceTimerRef.current) {
-				clearTimeout(debounceTimerRef.current)
-			}
-
-			debounceTimerRef.current = setTimeout(() => {
-				void refreshOpenAiModels(baseUrl, apiKey)
-			}, 500)
-		},
-		[refreshOpenAiModels],
-	)
-
 	useEffect(() => {
 		void refreshOpenAiModels(config?.baseUrl, latestOpenAiApiKeyRef.current)
 	}, [config?.baseUrl, refreshOpenAiModels])
 
 	const handleOpenAiModelSelection = useCallback(
-		(modelId: string) => {
+		(modelId: string, overridesOverride?: ProviderModelOverrides) => {
 			if (isOpenAiProvider) {
 				handleModeFieldChange({ plan: "planModeOpenAiModelId", act: "actModeOpenAiModelId" }, modelId, currentMode)
 			}
@@ -282,7 +212,7 @@ export const OpenAICompatibleProvider = ({
 			// id-independent blob. Recommit the displayed overrides under the
 			// new id; otherwise an unknown id resolves to safe defaults whose
 			// zero prices misbill paid requests as $0.
-			const overrides = selectedModelOverridesRef.current[currentMode].overrides
+			const overrides = overridesOverride ?? selectedModelOverridesRef.current[currentMode].overrides
 			const hasOverrides = Object.keys(overrides).length > 0
 			selectedModelOverridesRef.current[currentMode] = { modelId, overrides }
 			commitOpenAiSelection(modelId, hasOverrides ? overrides : undefined)
@@ -290,52 +220,192 @@ export const OpenAICompatibleProvider = ({
 		[commitOpenAiSelection, currentMode, handleModeFieldChange, isOpenAiProvider],
 	)
 
-	const { savedApiKeyMask, handleApiKeyChange } = useProviderApiKeyField({
-		apiKeyLength: config?.apiKeyLength,
-		onApiKeyChange: (apiKey) => {
-			latestOpenAiApiKeyRef.current = apiKey
-			debouncedRefreshOpenAiModels(latestOpenAiBaseUrlRef.current, apiKey)
+	const rememberActivePreset = (presetId: string | null) => {
+		setActivePresetId(presetId)
+		try {
+			if (presetId) {
+				localStorage.setItem("cline-chinese.active-provider-preset.v1", presetId)
+			} else {
+				localStorage.removeItem("cline-chinese.active-provider-preset.v1")
+			}
+		} catch {
+			// ignore storage errors
+		}
+	}
+
+	useEffect(() => {
+		const handler = (event: Event) => {
+			const presetId = (event as CustomEvent<string>).detail
+			if (presetId) {
+				setActivePresetId(presetId)
+			}
+		}
+		window.addEventListener("cline-provider-preset-selected", handler)
+		return () => window.removeEventListener("cline-provider-preset-selected", handler)
+	}, [])
+
+	const persistPresets = async (next: ProviderPreset[]) => {
+		const previous = presetList
+		setPresetBusy(true)
+		setPresetError("")
+		setPresetList(next)
+		try {
+			await StateServiceClient.updateSettings(
+				UpdateSettingsRequest.create({ providerPresets: serializeProviderPresets(next) }),
+			)
+		} catch (e) {
+			// Roll the optimistic list back so a failed save cannot leave a
+			// phantom provider in the UI that was never persisted.
+			setPresetList(previous)
+			setPresetError(`保存供应商配置失败：${e instanceof Error ? e.message : String(e)}`)
+			throw e
+		} finally {
+			setPresetBusy(false)
+		}
+	}
+
+	const applyProviderPreset = async (preset: ProviderPreset, modelId?: string) => {
+		setPresetError("")
+		try {
+			await write({
+				baseUrl: preset.baseUrl,
+				...(preset.apiKey ? { apiKey: preset.apiKey } : {}),
+			})
+			const requested = modelId && preset.models.some((model) => model.id === modelId && model.enabled) ? modelId : undefined
+			const target = preset.models.find((model) => model.id === requested) ?? preset.models.find((model) => model.enabled)
+			if (target) {
+				handleOpenAiModelSelection(target.id, presetModelOverrides(preset, target))
+			}
+			rememberActivePreset(preset.id)
+		} catch (e) {
+			setPresetError(`应用供应商配置失败：${e instanceof Error ? e.message : String(e)}`)
+		}
+	}
+
+	const handleCreateProviderPreset = async (input: {
+		name: string
+		baseUrl: string
+		apiKey: string
+		apiFormat: ProviderPresetApiFormat
+	}) => {
+		if (presetList.some((preset) => preset.name.trim() === input.name.trim())) {
+			throw new Error("已存在同名供应商")
+		}
+		const now = Date.now()
+		const model = selectedModelId
+			? createPresetModel(selectedModelId, {
+					contextWindow: selectedModelInfo?.contextWindow,
+					maxTokens: selectedModelInfo?.maxTokens,
+					supportsVision: selectedModelInfo?.supportsImages,
+				})
+			: undefined
+		const preset: ProviderPreset = {
+			id: createProviderPresetId(),
+			name: input.name,
+			baseUrl: input.baseUrl,
+			apiKey: input.apiKey,
+			apiFormat: input.apiFormat,
+			enabled: true,
+			models: model ? [model] : [],
+			createdAt: now,
+			updatedAt: now,
+		}
+		await persistPresets([preset, ...presetList])
+		await applyProviderPreset(preset)
+		return preset.id
+	}
+
+	const handleUpdateProviderPreset = async (presetId: string, patch: Partial<ProviderPreset>) => {
+		const existing = presetList.find((preset) => preset.id === presetId)
+		if (!existing) {
+			return
+		}
+		const updated: ProviderPreset = { ...existing, ...patch, updatedAt: patch.updatedAt ?? Date.now() }
+		await persistPresets(presetList.map((preset) => (preset.id === presetId ? updated : preset)))
+		const shouldReapply = ["baseUrl", "apiKey", "apiFormat"].some((key) => key in patch)
+		if (shouldReapply && activePresetId === presetId && updated.enabled) {
+			await applyProviderPreset(updated, selectedModelId || undefined)
+		}
+	}
+
+	const handleDeleteProviderPreset = async (presetId: string) => {
+		await persistPresets(presetList.filter((preset) => preset.id !== presetId))
+		if (activePresetId === presetId) {
+			rememberActivePreset(null)
+		}
+	}
+
+	const handleSavePresetModel = async (preset: ProviderPreset, model: ProviderPresetModel, originalId?: string) => {
+		if (activePresetId === preset.id && (originalId ?? model.id) === selectedModelId) {
+			handleOpenAiModelSelection(model.id, presetModelOverrides(preset, model))
+		}
+	}
+
+	const resolvePresetModel = useCallback(
+		async (modelId: string): Promise<DetectedModelParameters | undefined> => {
+			const trimmed = modelId.trim()
+			if (!trimmed) {
+				return undefined
+			}
+			try {
+				// The provider catalog lookup can wait on a slow /models endpoint.
+				// Cap it so automatic detection still resolves quickly from the
+				// bundled catalog / local family table.
+				const response = await Promise.race([
+					ModelsServiceClient.resolveModelInfo(
+						ResolveModelInfoRequest.create({ providerId, modelId: trimmed }),
+					),
+					new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 1200)),
+				])
+				if (!response) {
+					return inferModelParameters(trimmed)
+				}
+				const sameModel = !response.modelId || response.modelId.toLowerCase() === trimmed.toLowerCase()
+				if (response.modelInfo && sameModel) {
+					const info = fromProtobufModelInfo(response.modelInfo)
+					const detected: DetectedModelParameters = {
+						contextWindow: info.contextWindow,
+						maxTokens: info.maxTokens,
+						supportsVision: info.supportsImages,
+						capabilities: info.capabilities ? [...info.capabilities] : undefined,
+						source: response.source,
+					}
+					if (detected.contextWindow || detected.maxTokens || detected.supportsVision) {
+						return detected
+					}
+				}
+			} catch (error) {
+				console.error("Failed to resolve model info:", error)
+			}
+			return inferModelParameters(trimmed)
 		},
-		providerName: "OpenAI Compatible",
-		write,
-	})
+		[providerId],
+	)
 
 	return (
-		<div>
-			<Tooltip>
-				<TooltipTrigger>
-					<div className="mb-2.5">
-						<div className="flex items-center gap-2 mb-1">
-							<span style={{ fontWeight: 500 }}>基础 URL</span>
-							{remoteConfigSettings?.openAiBaseUrl !== undefined && (
-								<i className="codicon codicon-lock text-description text-sm" />
-							)}
-						</div>
-						<DebouncedTextField
-							disabled={remoteConfigSettings?.openAiBaseUrl !== undefined}
-							initialValue={config?.baseUrl || ""}
-							// Intentionally not gated on `config` having loaded:
-							// write() works before the initial read resolves, and a
-							// guard here would silently discard text typed right
-							// after mount, which the late resync then wipes.
-							onChange={(value) => {
-								latestOpenAiBaseUrlRef.current = value
-								void write({ baseUrl: value }).catch((error) => handleProviderConfigWriteError("base URL", error))
-								debouncedRefreshOpenAiModels(value, latestOpenAiApiKeyRef.current)
-							}}
-							placeholder={"输入基础 URL..."}
-							style={{ width: "100%", marginBottom: 10 }}
-							type="text"
-						/>
-					</div>
-				</TooltipTrigger>
-				<TooltipContent hidden={remoteConfigSettings?.openAiBaseUrl === undefined}>
-					此设置由你组织的远程配置管理
-				</TooltipContent>
-			</Tooltip>
+		<div className="flex flex-col gap-3" style={{ maxWidth: 920 }}>
+			<div className="flex flex-col gap-2">
+				<div>
+					<div className="text-xs font-semibold text-foreground">供应商配置</div>
+					<div className="mt-0.5 text-[10px] text-description">保存多套供应商，切换时自动写入 Base URL、密钥和模型</div>
+				</div>
+				<ProviderPresetManager
+					activePresetId={activePresetId}
+					busy={presetBusy}
+					currentModelId={selectedModelId || ""}
+					error={presetError}
+					onApply={applyProviderPreset}
+					onCreate={handleCreateProviderPreset}
+					onDelete={handleDeleteProviderPreset}
+					onReplaceAll={persistPresets}
+					onResolveModel={resolvePresetModel}
+					onSaveModel={handleSavePresetModel}
+					onUpdate={handleUpdateProviderPreset}
+					presets={presetList}
+				/>
+			</div>
 
-			<ApiKeyField initialValue={savedApiKeyMask} onChange={handleApiKeyChange} providerName="OpenAI Compatible" />
-
+			<SettingsCard description="服务端返回的模型列表；上方供应商卡片里也可以手动维护模型" title="从 API 选择模型">
 			<label htmlFor="openai-compatible-model-picker">
 				<span style={{ fontWeight: 500 }}>模型 ID</span>
 				{isRefreshingOpenAiModels && <span> 正在加载模型…</span>}
@@ -402,6 +472,9 @@ export const OpenAICompatibleProvider = ({
 				/>
 			)}
 
+			</SettingsCard>
+
+			<SettingsCard title="高级设置">
 			{/* OpenAI Compatible Custom Headers */}
 			{(() => {
 				const headers = config?.headers ?? {}
@@ -528,150 +601,25 @@ export const OpenAICompatibleProvider = ({
 				使用 Azure 身份验证
 			</VSCodeCheckbox>
 
-			<div
-				onClick={() => setModelConfigurationSelected((val) => !val)}
-				style={{
-					color: getAsVar(VSC_DESCRIPTION_FOREGROUND),
-					display: "flex",
-					margin: "10px 0",
-					cursor: "pointer",
-					alignItems: "center",
-				}}>
-				<span
-					className={`codicon ${modelConfigurationSelected ? "codicon-chevron-down" : "codicon-chevron-right"}`}
-					style={{
-						marginRight: "4px",
-					}}
-				/>
-				<span
-					style={{
-						fontWeight: 700,
-						textTransform: "uppercase",
-					}}>
-					模型配置
-				</span>
-			</div>
-
-			{modelConfigurationSelected && (
-				<>
-					{/* Render the in-flight pending override, not the stale resolved
-					    value: fast-foundation checkboxes re-emit programmatic checked
-					    re-syncs as change events, so re-applying the stale value during
-					    the commit round-trip would commit it right back (#13694). */}
-					<VSCodeCheckbox
-						checked={
-							selectedModelOverridesRef.current[currentMode].overrides.supportsVision ??
-							!!openAiModelInfo?.supportsImages
-						}
-						onChange={(e: any) => updateModelOverride("supportsVision", e.target.checked === true)}>
-						支持图片
-					</VSCodeCheckbox>
-
-					<div style={{ display: "flex", gap: 10, marginTop: "5px" }}>
-						<div style={{ flex: 1 }}>
-							<DebouncedTextField
-								initialValue={formatOptionalModelNumber(openAiModelInfo?.contextWindow)}
-								onChange={(value) => updateNumericModelOverride("contextWindow", "上下文窗口大小", value)}>
-								<span style={{ fontWeight: 500 }}>上下文窗口大小</span>
-							</DebouncedTextField>
-							{modelFieldErrors.contextWindow && <div role="alert">{modelFieldErrors.contextWindow}</div>}
-						</div>
-
-						<div style={{ flex: 1 }}>
-							<DebouncedTextField
-								initialValue={formatOptionalModelNumber(openAiModelInfo?.maxTokens)}
-								onChange={(value) => updateNumericModelOverride("maxTokens", "最大输出令牌数", value)}
-								placeholder="未设置">
-								<span style={{ fontWeight: 500 }}>最大输出令牌数</span>
-							</DebouncedTextField>
-							{modelFieldErrors.maxTokens && <div role="alert">{modelFieldErrors.maxTokens}</div>}
-						</div>
-					</div>
-
-					<div style={{ display: "flex", gap: 10, marginTop: "5px" }}>
-						<div style={{ flex: 1 }}>
-							<DebouncedTextField
-								initialValue={formatOptionalModelNumber(openAiModelInfo?.inputPrice)}
-								onChange={(value) => updateNumericModelOverride("inputPrice", "输入价格", value)}>
-								<span style={{ fontWeight: 500 }}>输入价格 / 1M tokens</span>
-							</DebouncedTextField>
-							{modelFieldErrors.inputPrice && <div role="alert">{modelFieldErrors.inputPrice}</div>}
-						</div>
-
-						<div style={{ flex: 1 }}>
-							<DebouncedTextField
-								initialValue={formatOptionalModelNumber(openAiModelInfo?.outputPrice)}
-								onChange={(value) => updateNumericModelOverride("outputPrice", "输出价格", value)}>
-								<span style={{ fontWeight: 500 }}>输出价格 / 1M tokens</span>
-							</DebouncedTextField>
-							{modelFieldErrors.outputPrice && <div role="alert">{modelFieldErrors.outputPrice}</div>}
-						</div>
-					</div>
-
-					<div style={{ display: "flex", gap: 10, marginTop: "5px" }}>
-						<div>
-							<DebouncedTextField
-								initialValue={formatOptionalModelNumber(openAiModelInfo?.temperature)}
-								onChange={(value) => updateNumericModelOverride("temperature", "温度", value)}
-								placeholder="未设置">
-								<span style={{ fontWeight: 500 }}>温度</span>
-							</DebouncedTextField>
-							{modelFieldErrors.temperature && <div role="alert">{modelFieldErrors.temperature}</div>}
-						</div>
-					</div>
-				</>
-			)}
-
-			<p
-				style={{
-					fontSize: "12px",
-					marginTop: 3,
-					color: "var(--vscode-descriptionForeground)",
-				}}>
-				<span style={{ color: "var(--vscode-errorForeground)" }}>
-					(<span style={{ fontWeight: 500 }}>注意：</span>Cline Chinese
-					使用复杂的提示词，因此不同模型的行为可能有所差异。能力较弱的模型可能无法按预期工作。)
-				</span>
-			</p>
-
-			{showModelOptions && (
-				<>
-					<ReasoningEffortSelector
-						currentMode={currentMode}
-						onEffortChange={(effort) => {
-							void write(reasoningEffortPatch(effort)).catch((err) =>
-								console.error("Failed to update OpenAI Compatible reasoning effort:", err),
-							)
-						}}
-						value={reasoningEffort}
-					/>
-					<ModelInfoView isPopup={isPopup} modelInfo={selectedModelInfo} selectedModelId={selectedModelId} />
-				</>
-			)}
+			</SettingsCard>
 		</div>
 	)
 }
 
-type NumericModelOverrideKey = "contextWindow" | "maxTokens" | "inputPrice" | "outputPrice" | "temperature"
+interface SettingsCardProps {
+	title: string
+	description?: string
+	children: ReactNode
+}
+
+const SettingsCard = ({ title, description, children }: SettingsCardProps) => (
+	<section className="rounded-lg border border-(--vscode-widget-border) p-3">
+		<div className="mb-2">
+			<div className="text-xs font-semibold text-foreground">{title}</div>
+			{description ? <div className="mt-0.5 text-[10px] text-description">{description}</div> : null}
+		</div>
+		{children}
+	</section>
+)
 
 type PendingModelSelection = { modelId: string | undefined; overrides: ProviderModelOverrides }
-
-type ParsedOptionalNumber = { valid: true; value: number | undefined } | { valid: false }
-
-// -1 is the legacy UI sentinel for "not set"; it renders (and compares) as unset.
-function displayedModelNumber(value: number | undefined): number | undefined {
-	return typeof value === "number" && Number.isFinite(value) && value !== -1 ? value : undefined
-}
-
-function formatOptionalModelNumber(value: number | undefined): string {
-	return displayedModelNumber(value)?.toString() ?? ""
-}
-
-function parseOptionalFiniteNumber(value: string): ParsedOptionalNumber {
-	const trimmed = value.trim()
-	if (!trimmed) {
-		return { valid: true, value: undefined }
-	}
-	const parsed = Number(trimmed)
-	return Number.isFinite(parsed) ? { valid: true, value: parsed } : { valid: false }
-}

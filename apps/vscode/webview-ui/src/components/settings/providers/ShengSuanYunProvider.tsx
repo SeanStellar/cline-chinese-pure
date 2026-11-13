@@ -163,8 +163,18 @@ export const ShengSuanYunProvider = ({ showModelOptions, isPopup, currentMode, i
 				loginBtn={userInfo?.uid ? undefined : <LoginBtn />}
 				onChange={(value) => handleFieldChange("shengSuanYunApiKey", value)}
 				providerName="胜算云"
-				signupUrl="https://console.shengsuanyun.com/user/keys/?from=cline-chinese"
 			/>
+			{isLoggedIn && (
+				<button
+					className="mt-1 bg-transparent p-0 text-left text-xs text-description underline hover:text-foreground"
+					onClick={() => {
+						void AccountServiceClient.shengSuanYunLogoutClicked(EmptyRequest.create()).catch((error) => {
+							console.error("Failed to sign out of ShengSuanYun:", error)
+						})
+					}}>
+					退出胜算云登录
+				</button>
+			)}
 			{showModelOptions && (
 				<ShengSuanYunModelPicker currentMode={currentMode} initialModelTab={initialModelTab} isPopup={isPopup} />
 			)}

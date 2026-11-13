@@ -31,6 +31,25 @@
 			}
 		},
 		{
+			// Skips the watch preLaunchTask and loads the prebuilt dist/ + webview-ui/build.
+			"name": "Run Extension (Fast, prebuilt)",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}/apps/vscode",
+				"--disable-workspace-trust",
+				"--disable-extension",
+				"HybridTalentComputing:cline-chinese",
+				"--disable-extension",
+				"HybridTalentComputing.cline-nightly",
+				"${workspaceFolder}/apps/vscode",
+				"--disable-extensions"
+			],
+			"env": {
+				"CLINE_ENVIRONMENT": "production"
+			}
+		},
+		{
 			"name": "Run Extension (staging)",
 			"type": "extensionHost",
 			"request": "launch",

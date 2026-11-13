@@ -50,6 +50,10 @@ export interface ExtensionState {
 	chineseDailyPopupEnabled?: boolean
 	/** Local calendar date (YYYY-MM-DD) on which the daily promo popup was last presented. */
 	chineseDailyPopupLastShownDate?: string
+	/** Saved model configurations serialized as JSON. */
+	modelProfiles?: string
+	/** Saved OpenAI-compatible provider presets serialized as JSON. */
+	providerPresets?: string
 	onboardingModels: OnboardingModelGroup | undefined
 	apiConfiguration?: ApiConfiguration
 	autoApprovalSettings: AutoApprovalSettings

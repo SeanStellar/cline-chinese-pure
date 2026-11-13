@@ -7,9 +7,10 @@ import { ACTION_METADATA } from "./constants"
 
 interface AutoApproveBarProps {
 	style?: React.CSSProperties
+	compact?: boolean
 }
 
-const AutoApproveBar = ({ style }: AutoApproveBarProps) => {
+const AutoApproveBar = ({ style, compact = false }: AutoApproveBarProps) => {
 	const { autoApprovalSettings } = useExtensionState()
 
 	const [isModalVisible, setIsModalVisible] = useState(false)
@@ -59,6 +60,38 @@ const AutoApproveBar = ({ style }: AutoApproveBarProps) => {
 	const borderColor = `color-mix(in srgb, ${getAsVar(VSC_TITLEBAR_INACTIVE_FOREGROUND)} 20%, transparent)`
 	const borderGradient = `linear-gradient(to bottom, ${borderColor} 0%, transparent 50%)`
 	const bgGradient = `linear-gradient(to bottom, color-mix(in srgb, var(--vscode-sideBar-background) 96%, white) 0%, transparent 80%)`
+
+	if (compact) {
+		return (
+			<div className="relative flex min-w-0 select-none items-center" style={style}>
+				<div
+					aria-label={isModalVisible ? "关闭自动批准设置" : "打开自动批准设置"}
+					className="group flex h-5 cursor-pointer items-center gap-0.5 rounded px-1.5 text-xs hover:bg-(--vscode-toolbar-hoverBackground)"
+					onClick={() => {
+						setIsModalVisible((prev) => !prev)
+					}}
+					onKeyDown={(e) => {
+						if (e.key === "Enter" || e.key === " ") {
+							e.preventDefault()
+							e.stopPropagation()
+							setIsModalVisible((prev) => !prev)
+						}
+					}}
+					ref={buttonRef}
+					tabIndex={0}>
+					<span className="whitespace-nowrap text-muted-foreground group-hover:text-foreground">自动批准</span>
+					{isModalVisible ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
+				</div>
+				<AutoApproveModal
+					ACTION_METADATA={ACTION_METADATA}
+					buttonRef={buttonRef}
+					floating
+					isVisible={isModalVisible}
+					setIsVisible={setIsModalVisible}
+				/>
+			</div>
+		)
+	}
 
 	return (
 		<div

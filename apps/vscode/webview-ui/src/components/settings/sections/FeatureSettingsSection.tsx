@@ -165,7 +165,37 @@ const FeatureSettingsSection = ({ renderSectionHeader }: FeatureSettingsSectionP
 		chineseDailyPopupEnabled,
 		cloudSessionsAvailable,
 		cloudSessionsEnabled,
+		preferredLanguage,
 	} = useExtensionState()
+
+	const isTraditionalChinese = preferredLanguage?.includes("Traditional Chinese")
+	const isSimplifiedChinese = preferredLanguage?.includes("Simplified Chinese")
+	const webSearchStrings = isTraditionalChinese
+		? { label: "網路搜尋", description: "在所選提供商和模型支援時，允許模型搜尋網路。僅對新任務生效。" }
+		: isSimplifiedChinese
+			? { label: "网络搜索", description: "在所选提供商和模型支持时，允许模型搜索网络。仅对新任务生效。" }
+			: {
+					label: "Web Search",
+					description:
+						"Let the model search the web when the selected provider and model support it. Applies to new tasks.",
+				}
+	const cloudStrings = isTraditionalChinese
+		? {
+				label: "雲端",
+				description:
+					"在安全的雲端沙箱中、針對你的 GitHub 儲存庫執行 Cline。會為新任務輸入框增加「雲端」選項。需要已連接 GitHub 的 Cline 帳戶。",
+			}
+		: isSimplifiedChinese
+			? {
+					label: "云端",
+					description:
+						"在安全的云端沙箱中、针对你的 GitHub 仓库运行 Cline。会为新任务输入框增加「云端」选项。需要已连接 GitHub 的 Cline 账户。",
+				}
+			: {
+					label: "Cloud",
+					description:
+						"Run Cline on your GitHub repositories in secure cloud sandboxes. Adds a Cloud option to the new task composer. Requires a Cline account with GitHub connected.",
+				}
 
 	// State lookup for mapped features
 	const featureState: Record<string, boolean | undefined> = {
@@ -223,16 +253,16 @@ const FeatureSettingsSection = ({ renderSectionHeader }: FeatureSettingsSectionP
 							</div>
 							<FeatureRow
 								checked={webSearchEnabled}
-								description="Let the model search the web when the selected provider and model support it. Applies to new tasks."
-								label="Web Search"
+								description={webSearchStrings.description}
+								label={webSearchStrings.label}
 								onChange={(checked) => updateSetting("webSearchEnabled", checked)}
 							/>
 							<FeatureRow
 								checked={cloudSessionsEnabled}
-								description="Run Cline on your GitHub repositories in secure cloud sandboxes. Adds a Cloud option to the new task composer. Requires a Cline account with GitHub connected."
+								description={cloudStrings.description}
 								id="cloud-sessions"
 								isVisible={!!cloudSessionsAvailable}
-								label="Cloud"
+								label={cloudStrings.label}
 								onChange={(checked) => updateSetting("cloudSessionsEnabled", checked)}
 							/>
 						</div>

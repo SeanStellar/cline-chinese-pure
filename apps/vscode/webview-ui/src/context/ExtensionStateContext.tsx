@@ -80,6 +80,7 @@ export interface ExtensionStateContextType extends ExtensionState {
 	settingsInitialModelTab?: "recommended" | "free"
 	showHistory: boolean
 	showAccount: boolean
+	showUsage: boolean
 	showWorktrees: boolean
 	showAnnouncement: boolean
 	/** The version "What's New" modal is actually open (not merely pending). */
@@ -140,6 +141,7 @@ export interface ExtensionStateContextType extends ExtensionState {
 	}) => void
 	navigateToHistory: () => void
 	navigateToAccount: () => void
+	navigateToUsage: () => void
 	navigateToWorktrees: () => void
 	navigateToChat: () => void
 
@@ -151,6 +153,7 @@ export interface ExtensionStateContextType extends ExtensionState {
 	hideSettings: () => void
 	hideHistory: () => void
 	hideAccount: () => void
+	hideUsage: () => void
 	hideWorktrees: () => void
 	hideAnnouncement: () => void
 	closeMarketplaceView: () => void
@@ -173,6 +176,7 @@ export const ExtensionStateContextProvider: React.FC<{
 	const [settingsInitialModelTab, setSettingsInitialModelTab] = useState<"recommended" | "free" | undefined>(undefined)
 	const [showHistory, setShowHistory] = useState(false)
 	const [showAccount, setShowAccount] = useState(false)
+	const [showUsage, setShowUsage] = useState(false)
 	const [showWorktrees, setShowWorktrees] = useState(false)
 	const [showAnnouncement, setShowAnnouncement] = useState(false)
 	const [showWhatsNewModal, setShowWhatsNewModal] = useState(false)
@@ -195,6 +199,7 @@ export const ExtensionStateContextProvider: React.FC<{
 	}, [])
 	const hideHistory = useCallback(() => setShowHistory(false), [setShowHistory])
 	const hideAccount = useCallback(() => setShowAccount(false), [setShowAccount])
+	const hideUsage = useCallback(() => setShowUsage(false), [setShowUsage])
 	const hideWorktrees = useCallback(() => setShowWorktrees(false), [setShowWorktrees])
 	const hideAnnouncement = useCallback(() => setShowAnnouncement(false), [setShowAnnouncement])
 
@@ -269,6 +274,16 @@ export const ExtensionStateContextProvider: React.FC<{
 		setShowAccount(true)
 	}, [closeMarketplaceView, setShowSettings, closeMcpView, setShowHistory, setShowWorktrees, setShowAccount])
 
+	const navigateToUsage = useCallback(() => {
+		closeMarketplaceView()
+		setShowSettings(false)
+		closeMcpView()
+		setShowHistory(false)
+		setShowAccount(false)
+		setShowWorktrees(false)
+		setShowUsage(true)
+	}, [closeMarketplaceView, setShowSettings, closeMcpView, setShowHistory, setShowAccount, setShowWorktrees])
+
 	const navigateToWorktrees = useCallback(() => {
 		closeMarketplaceView()
 		setShowSettings(false)
@@ -287,6 +302,14 @@ export const ExtensionStateContextProvider: React.FC<{
 		setShowWorktrees(false)
 	}, [closeMarketplaceView, setShowSettings, closeMcpView, setShowHistory, setShowAccount, setShowWorktrees])
 
+	// Only one full-screen view is visible at a time; opening any other view
+	// closes the usage statistics page.
+	useEffect(() => {
+		if (showUsage && (showSettings || showHistory || showMarketplace || showMcp || showAccount || showWorktrees)) {
+			setShowUsage(false)
+		}
+	}, [showUsage, showSettings, showHistory, showMarketplace, showMcp, showAccount, showWorktrees])
+
 	const openBatchResult = useCallback((result: { title: string; content: string }) => {
 		setBatchResultToOpen(result)
 	}, [])
@@ -303,7 +326,9 @@ export const ExtensionStateContextProvider: React.FC<{
 		shouldShowAnnouncement: false,
 		autoApprovalSettings: DEFAULT_AUTO_APPROVAL_SETTINGS,
 		browserSettings: DEFAULT_BROWSER_SETTINGS,
-		preferredLanguage: "English",
+		preferredLanguage: "Simplified Chinese - 简体中文",
+		modelProfiles: "[]",
+		providerPresets: "[]",
 		mode: "act",
 		platform: DEFAULT_PLATFORM,
 		environment: Environment.production,
@@ -728,9 +753,9 @@ export const ExtensionStateContextProvider: React.FC<{
 		// Set up account button clicked subscription
 		accountButtonClickedSubscriptionRef.current = UiServiceClient.subscribeToAccountButtonClicked(EmptyRequest.create(), {
 			onResponse: () => {
-				// When account button is clicked, navigate to account view
+				// The former account button now opens the local usage statistics view.
 				console.log("[DEBUG] Received account button clicked event from gRPC stream")
-				navigateToAccount()
+				navigateToUsage()
 			},
 			onError: (error: any) => {
 				console.error("Error in account button clicked subscription:", error)
@@ -920,6 +945,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		settingsInitialModelTab,
 		showHistory,
 		showAccount,
+		showUsage,
 		showWorktrees,
 		showAnnouncement,
 		showWhatsNewModal,
@@ -942,6 +968,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		navigateToSettingsModelPicker,
 		navigateToHistory,
 		navigateToAccount,
+		navigateToUsage,
 		navigateToWorktrees,
 		navigateToChat,
 
@@ -953,6 +980,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		hideSettings,
 		hideHistory,
 		hideAccount,
+		hideUsage,
 		hideWorktrees,
 		hideAnnouncement,
 		closeMarketplaceView,

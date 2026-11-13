@@ -145,7 +145,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	)
 	context.subscriptions.push(vscode.commands.registerCommand(commands.SettingsButton, () => sendSettingsButtonClickedEvent()))
 	context.subscriptions.push(vscode.commands.registerCommand(commands.HistoryButton, () => sendHistoryButtonClickedEvent()))
-	context.subscriptions.push(vscode.commands.registerCommand(commands.AccountButton, () => sendAccountButtonClickedEvent()))
+	context.subscriptions.push(vscode.commands.registerCommand(commands.UsageButton, () => sendAccountButtonClickedEvent()))
 	context.subscriptions.push(vscode.commands.registerCommand(commands.WorktreesButton, () => sendWorktreesButtonClickedEvent()))
 
 	context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider(DIFF_VIEW_URI_SCHEME, diffContentProvider))
@@ -322,6 +322,38 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 			await addToCline(context.controller, context.commandContext)
 		}),
+	)
+	// Explorer context-menu fallback while VS Code does not deliver drag/drop
+	// events for Explorer drags to webviews (microsoft/vscode#339278).
+	context.subscriptions.push(
+		vscode.commands.registerCommand(
+			commands.AddSelectedFilesToChat,
+			async (uri?: vscode.Uri, selectedUris?: vscode.Uri[]) => {
+				const targets = selectedUris && selectedUris.length > 0 ? selectedUris : uri ? [uri] : []
+				if (targets.length === 0) {
+					return
+				}
+				const mentions: string[] = []
+				for (const target of targets) {
+					try {
+						const stat = await vscode.workspace.fs.stat(target)
+						let relative = vscode.workspace.asRelativePath(target, false).replace(/\\/g, "/")
+						if (!relative.startsWith("/")) {
+							relative = "/" + relative
+						}
+						if (stat.type & vscode.FileType.Directory) {
+							relative += "/"
+						}
+						mentions.push(`@${relative}`)
+					} catch (error) {
+						console.error("Failed to resolve selected path for Cline input:", error)
+					}
+				}
+				if (mentions.length > 0) {
+					await sendAddToInputEvent(`${mentions.join(" ")} `)
+				}
+			},
+		),
 	)
 	context.subscriptions.push(
 		vscode.commands.registerCommand(commands.FixWithCline, async (range: vscode.Range, diagnostics: vscode.Diagnostic[]) => {

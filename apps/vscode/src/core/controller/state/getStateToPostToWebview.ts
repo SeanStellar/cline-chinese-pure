@@ -78,6 +78,8 @@ export async function getStateToPostToWebview(controller: {
 	const chineseNewUserPopupShown = !!stateManager.getGlobalStateKey("chineseNewUserPopupShown")
 	const chineseDailyPopupEnabled = stateManager.getGlobalStateKey("chineseDailyPopupEnabled") ?? true
 	const chineseDailyPopupLastShownDate = stateManager.getGlobalStateKey("chineseDailyPopupLastShownDate")
+	const modelProfiles = stateManager.getGlobalStateKey("modelProfiles") ?? "[]"
+	const providerPresets = stateManager.getGlobalStateKey("providerPresets") ?? "[]"
 
 	const mcpResponsesCollapsed = stateManager.getGlobalStateKey("mcpResponsesCollapsed")
 	const favoritedModelIds = stateManager.getGlobalStateKey("favoritedModelIds")
@@ -100,9 +102,9 @@ export async function getStateToPostToWebview(controller: {
 	const checkpointRestoreInput = controller.checkpointRestoreInput
 
 	const processedTaskHistory = (taskHistory || [])
-		.filter((item: any) => item.ts && item.task)
+		.filter((item: any) => item.ts && item.task && !item.isBatchResult)
 		.sort((a: any, b: any) => b.ts - a.ts)
-		.slice(0, 100)
+		.slice(0, 500)
 
 	const latestAnnouncementId = getLatestAnnouncementId()
 	const shouldShowAnnouncement = lastShownAnnouncementId !== latestAnnouncementId
@@ -178,6 +180,8 @@ export async function getStateToPostToWebview(controller: {
 		chineseNewUserPopupShown,
 		chineseDailyPopupEnabled,
 		chineseDailyPopupLastShownDate,
+		modelProfiles,
+		providerPresets,
 		onboardingModels,
 		mcpResponsesCollapsed,
 		taskHistory: processedTaskHistory,

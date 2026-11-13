@@ -8,6 +8,7 @@ import { useClineAuth } from "@/context/ClineAuthContext"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useClinePassPromo } from "@/hooks/useClinePassPromo"
 import { CloudServiceClient, StateServiceClient } from "@/services/grpc-client"
+import { getModeLabels } from "@/utils/modeLabels"
 import { TargetButton } from "../../cloud/TaskTargetPanel"
 import { TabButton } from "../../mcp/configuration/McpConfigurationView"
 import ApiOptions from "../ApiOptions"
@@ -72,7 +73,8 @@ const LocalModelSettings = ({
 	currentTab,
 	setCurrentTab,
 }: Pick<ApiConfigurationSectionProps, "initialModelTab"> & { currentTab: Mode; setCurrentTab: (tab: Mode) => void }) => {
-	const { planActSeparateModelsSetting, mode, apiConfiguration } = useExtensionState()
+	const { planActSeparateModelsSetting, mode, apiConfiguration, preferredLanguage } = useExtensionState()
+	const modeLabels = getModeLabels(preferredLanguage)
 	const { handleFieldsChange } = useApiConfigurationHandlers()
 	return (
 		<>
@@ -88,7 +90,7 @@ const LocalModelSettings = ({
 								opacity: 1,
 								cursor: "pointer",
 							}}>
-							Plan 模式
+							{modeLabels.planMode}
 						</TabButton>
 						<TabButton
 							disabled={currentTab === "act"}
@@ -98,7 +100,7 @@ const LocalModelSettings = ({
 								opacity: 1,
 								cursor: "pointer",
 							}}>
-							Act 模式
+							{modeLabels.actMode}
 						</TabButton>
 					</div>
 
@@ -131,11 +133,14 @@ const LocalModelSettings = ({
 							console.error("Failed to update separate models setting:", error)
 						}
 					}}>
-					为 Plan 和 Act 模式使用不同的模型
+					{modeLabels.plan === "Plan"
+						? "为 Plan 和 Act 模式使用不同的模型"
+						: `为${modeLabels.plan}和${modeLabels.act}模式使用不同的模型`}
 				</VSCodeCheckbox>
 				<p className="text-xs mt-[5px] text-(--vscode-descriptionForeground)">
-					在 Plan 和 Act 模式之间切换时，将保留上一模式中使用的 API
-					和模型。这在例如使用强大的推理模型制定计划、再用更经济的编码模型执行时会很有帮助。
+					{modeLabels.plan === "Plan"
+						? "在 Plan 和 Act 模式之间切换时，将保留上一模式中使用的 API 和模型。这在例如使用强大的推理模型制定计划、再用更经济的编码模型执行时会很有帮助。"
+						: `在${modeLabels.plan}和${modeLabels.act}模式之间切换时，将保留上一模式中使用的 API 和模型。这在例如使用强大的推理模型制定计划、再用更经济的编码模型执行时会很有帮助。`}
 				</p>
 			</div>
 		</>

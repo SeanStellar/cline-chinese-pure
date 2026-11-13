@@ -14,6 +14,7 @@ interface InputSectionProps {
 	selectFilesAndImages: () => Promise<void>
 	batchMode?: boolean
 	onBatchModeChange?: (batch: boolean, mode?: "plan" | "act") => void
+	hideAutoApprove?: boolean
 }
 
 /**
@@ -28,6 +29,7 @@ export const InputSection: React.FC<InputSectionProps> = ({
 	selectFilesAndImages,
 	batchMode = false,
 	onBatchModeChange = () => {},
+	hideAutoApprove = false,
 }) => {
 	const {
 		activeQuote,
@@ -47,10 +49,16 @@ export const InputSection: React.FC<InputSectionProps> = ({
 	} = chatState
 
 	const { isAtBottom, scrollToBottomAuto } = scrollBehavior
-	const { turnState, cloudSessionsEnabled, cloudTaskTarget, currentCloudTask, clineMessages = [] } = useExtensionState()
+	const { turnState, cloudSessionsEnabled, cloudTaskTarget, currentCloudTask, foregroundCommandRunning, clineMessages = [] } =
+		useExtensionState()
 	const legacyTaskRunning =
 		turnState === undefined &&
 		(lastMessage?.partial === true || (lastMessage?.type === "say" && lastMessage.say === "api_req_started"))
+	// While a plain streaming turn is the only active state, show a stop icon in
+	// the composer's send slot instead of the full-width "取消" footer button.
+	// Foreground-command and approval states keep their dedicated footer buttons.
+	const showCancelInSendSlot =
+		!foregroundCommandRunning && (turnState?.phase === "streaming" || (turnState === undefined && legacyTaskRunning))
 	const allowSubmitWhileDisabled =
 		turnState?.phase === "streaming" ||
 		turnState?.phase === "awaiting_approval" ||
@@ -90,9 +98,13 @@ export const InputSection: React.FC<InputSectionProps> = ({
 			<ChatTextArea
 				activeQuote={activeQuote}
 				batchMode={batchMode}
+				hideAutoApprove={hideAutoApprove}
 				inputValue={inputValue}
 				onBatchModeChange={onBatchModeChange}
 				onFocusChange={handleFocusChange}
+				onCancel={() => {
+					void messageHandlers.executeButtonAction({ type: "cancel" })
+				}}
 				onHeightChange={() => {
 					if (isAtBottom) {
 						scrollToBottomAuto()
@@ -100,6 +112,7 @@ export const InputSection: React.FC<InputSectionProps> = ({
 				}}
 				onSelectFilesAndImages={selectFilesAndImages}
 				onSend={() => messageHandlers.handleSendMessage(inputValue, selectedImages, selectedFiles)}
+				showCancel={showCancelInSendSlot}
 				placeholderText={placeholderText}
 				ref={textAreaRef}
 				selectedFiles={selectedFiles}

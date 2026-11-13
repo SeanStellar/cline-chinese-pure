@@ -452,6 +452,8 @@ message UpdateSettingsRequest {
   optional string typesafe_api_key = 49;
   optional string typesafe_base_url = 50;
   optional double typesafe_context_delete_threshold = 51;
+  optional string model_profiles = 52;
+  optional string provider_presets = 53;
 }
 
 message UpdateTerminalConnectionTimeoutRequest {

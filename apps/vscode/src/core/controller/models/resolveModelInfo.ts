@@ -1,5 +1,7 @@
+import { MODEL_COLLECTIONS_BY_PROVIDER_ID } from "@cline/llms"
 import type { ProviderModelsResult } from "@/sdk/model-catalog/contracts"
 import { providerAllowsCustomModelIds } from "@/sdk/model-catalog/custom-model-ids"
+import { adaptSdkModelInfo } from "@/sdk/model-catalog/shape-adapter"
 import { ResolveModelInfoRequest, ResolveModelInfoResponse } from "@/shared/proto/cline/models"
 import { toProtobufModelInfo } from "@/shared/proto-conversions/models/typeConversion"
 import { type ProviderCatalogController, parseProviderIdRequest } from "./providerCatalogShared"
@@ -131,6 +133,25 @@ export async function resolveModelInfo(
 		}
 	}
 
+	// The requested id may belong to another provider's catalog (gateways
+	// often expose the same upstream model under their own spelling). Search
+	// the bundled global catalog before giving up so the settings UI can still
+	// auto-fill context window / output limits / capabilities.
+	const globalHit = findGlobalCatalogModel(requestedModelId)
+	if (globalHit) {
+		try {
+			return ResolveModelInfoResponse.create({
+				providerId,
+				modelId: requestedModelId,
+				modelInfo: toProtobufModelInfo(adaptSdkModelInfo(globalHit.modelInfo)),
+				source: "global-catalog",
+			})
+		} catch {
+			// Malformed catalog entry: fall through to the committed selection /
+			// unknown response rather than failing the whole lookup.
+		}
+	}
+
 	if (fallbackSelection) {
 		return ResolveModelInfoResponse.create({
 			providerId,
@@ -145,6 +166,34 @@ export async function resolveModelInfo(
 		modelId: requestedModelId,
 		source: "unknown",
 	})
+}
+
+type GlobalModelEntry = Parameters<typeof adaptSdkModelInfo>[0]
+
+function findGlobalCatalogModel(modelId: string): { modelInfo: GlobalModelEntry } | undefined {
+	const target = modelId.trim().toLowerCase()
+	if (!target) {
+		return undefined
+	}
+	let prefixHit: { id: string; modelInfo: GlobalModelEntry } | undefined
+	for (const collection of Object.values(MODEL_COLLECTIONS_BY_PROVIDER_ID)) {
+		const models = collection?.models
+		if (!models) {
+			continue
+		}
+		for (const [id, info] of Object.entries(models)) {
+			const lowered = id.toLowerCase()
+			if (lowered === target) {
+				return { modelInfo: info as GlobalModelEntry }
+			}
+			if (target.startsWith(`${lowered}-`) || target.startsWith(`${lowered}_`)) {
+				if (!prefixHit || id.length > prefixHit.id.length) {
+					prefixHit = { id, modelInfo: info as GlobalModelEntry }
+				}
+			}
+		}
+	}
+	return prefixHit ? { modelInfo: prefixHit.modelInfo } : undefined
 }
 
 function pickFromCatalog(

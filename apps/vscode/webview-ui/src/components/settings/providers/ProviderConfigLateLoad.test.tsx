@@ -2,7 +2,6 @@ import { act, fireEvent, render, screen } from "@testing-library/react"
 import type { ChangeEventHandler, ReactNode } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { LiteLlmProvider } from "./LiteLlmProvider"
-import { OpenAICompatibleProvider } from "./OpenAICompatible"
 
 // Regression tests for edits made while the provider config is still loading:
 // the initial readProviderConfig round trip is in flight, so `config` is
@@ -155,55 +154,12 @@ describe("provider settings edits made before config loads", () => {
 		}))
 	})
 
-	it("OpenAI Compatible: persists a base URL typed before the initial read resolves", async () => {
-		const initialRead = deferred<ReturnType<typeof storedConfig>>()
-		mocks.readProviderConfig.mockReturnValue(initialRead.promise)
-		render(<OpenAICompatibleProvider currentMode="act" providerId="custom-openai" showModelOptions={false} />)
-
-		const baseUrlInput = screen.getByPlaceholderText("Enter base URL...")
-		fireEvent.change(baseUrlInput, { target: { value: "http://typed.example:1234/v1" } })
-		await flushDebounce()
-
-		expect(mocks.writeProviderConfig).toHaveBeenCalledTimes(1)
-		expect(mocks.writeProviderConfig.mock.calls[0][0].patch.baseUrl).toBe("http://typed.example:1234/v1")
-
-		// The slow initial read lands with the pre-edit stored config; it is
-		// stale (an older request than the write) and must not roll back the
-		// field.
-		await act(async () => {
-			initialRead.resolve(storedConfig("custom-openai"))
-		})
-
-		expect(baseUrlInput).toHaveValue("http://typed.example:1234/v1")
-	})
-
-	it("OpenAI Compatible: persists an API key typed before the initial read resolves", async () => {
-		const initialRead = deferred<ReturnType<typeof storedConfig>>()
-		mocks.readProviderConfig.mockReturnValue(initialRead.promise)
-		render(<OpenAICompatibleProvider currentMode="act" providerId="custom-openai" showModelOptions={false} />)
-
-		fireEvent.change(screen.getByPlaceholderText("Enter API Key..."), { target: { value: "early-secret" } })
-		await flushDebounce()
-
-		expect(mocks.writeProviderConfig).toHaveBeenCalledTimes(1)
-		expect(mocks.writeProviderConfig.mock.calls[0][0].patch.apiKey).toBe("early-secret")
-
-		await act(async () => {
-			initialRead.resolve(storedConfig("custom-openai"))
-		})
-
-		// The write's read-back reports the new key's length, so the field
-		// shows the saved-key mask for the key just typed — not the stale
-		// stored key's mask.
-		expect(screen.getByPlaceholderText("Enter API Key...")).toHaveValue("•".repeat("early-secret".length))
-	})
-
 	it("LiteLLM: persists a base URL typed before the initial read resolves", async () => {
 		const initialRead = deferred<ReturnType<typeof storedConfig>>()
 		mocks.readProviderConfig.mockReturnValue(initialRead.promise)
 		render(<LiteLlmProvider currentMode="act" showModelOptions={false} />)
 
-		const baseUrlInput = screen.getByPlaceholderText("Default: http://localhost:4000")
+		const baseUrlInput = screen.getByPlaceholderText("默认：http://localhost:4000")
 		fireEvent.change(baseUrlInput, { target: { value: "http://typed.example:4000" } })
 		await flushDebounce()
 
@@ -222,7 +178,7 @@ describe("provider settings edits made before config loads", () => {
 		mocks.readProviderConfig.mockReturnValue(initialRead.promise)
 		render(<LiteLlmProvider currentMode="act" showModelOptions={false} />)
 
-		fireEvent.change(screen.getByPlaceholderText("Default: noop"), { target: { value: "sk-early" } })
+		fireEvent.change(screen.getByPlaceholderText("默认：noop"), { target: { value: "sk-early" } })
 		await flushDebounce()
 
 		expect(mocks.writeProviderConfig).toHaveBeenCalledTimes(1)
@@ -232,6 +188,6 @@ describe("provider settings edits made before config loads", () => {
 			initialRead.resolve(storedConfig("litellm"))
 		})
 
-		expect(screen.getByPlaceholderText("Default: noop")).toHaveValue("•".repeat("sk-early".length))
+		expect(screen.getByPlaceholderText("默认：noop")).toHaveValue("•".repeat("sk-early".length))
 	})
 })

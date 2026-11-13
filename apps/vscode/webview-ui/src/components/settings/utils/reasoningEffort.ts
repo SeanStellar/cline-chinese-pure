@@ -6,6 +6,16 @@ export const DEFAULT_REASONING_EFFORT_OPTION = "default"
 
 export type ReasoningEffortSelection = OpenaiReasoningEffort | typeof DEFAULT_REASONING_EFFORT_OPTION
 
+export const REASONING_EFFORT_LABELS: Record<ReasoningEffortSelection, string> = {
+	[DEFAULT_REASONING_EFFORT_OPTION]: "默认",
+	none: "最小",
+	low: "低",
+	medium: "中",
+	high: "高",
+	xhigh: "极高",
+	max: "最大",
+}
+
 /** The provider-config patch that saves a `ReasoningEffortSelector` choice. */
 export function reasoningEffortPatch(effort: ReasoningEffortSelection): ProviderConfigWritePatch {
 	if (effort === DEFAULT_REASONING_EFFORT_OPTION) {

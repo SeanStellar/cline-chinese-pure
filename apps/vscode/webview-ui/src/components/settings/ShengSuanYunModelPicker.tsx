@@ -1,7 +1,7 @@
 import { type ModelInfo, shengSuanYunDefaultModelId, shengSuanYunDefaultModelInfo } from "@shared/api"
 import { EmptyRequest } from "@shared/proto/cline/common"
 import { Mode } from "@shared/storage/types"
-import { VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import React, { KeyboardEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useMount } from "react-use"
 import styled from "styled-components"
@@ -9,7 +9,6 @@ import { useDynamicProviderSelection } from "@/hooks/useDynamicProviderSelection
 import { ModelsServiceClient } from "@/services/grpc-client"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { ModelInfoView } from "./common/ModelInfoView"
-import FeaturedModelCard, { Lure } from "./FeaturedModelCard"
 import { getModeSpecificFields } from "./utils/providerUtils"
 import { useApiConfigurationHandlers } from "./utils/useApiConfigurationHandlers"
 
@@ -44,122 +43,6 @@ const StarIcon = ({ isFavorite, onClick }: { isFavorite: boolean; onClick: (e: R
 	)
 }
 
-export const recommendedModels = [
-	{
-		id: "ali/qwen3.5-plus",
-		name: "",
-		description: "免费体验", // gitleaks:allow
-		label: "NEW",
-	},
-	{
-		id: "deepseek/deepseek-v4-flash",
-		name: "",
-		description: "免费体验",
-		label: "NEW",
-	},
-	{
-		id: "baidu/ernie-4.5-turbo-128k",
-		name: "",
-		description: "免费体验",
-		label: "NEW",
-	},
-	{
-		id: "minimax/minimax-m2.5",
-		name: "",
-		description: "免费体验",
-		label: "NEW",
-	},
-	{
-		id: "bigmodel/glm-4.6",
-		name: "",
-		description: "免费体验",
-		label: "NEW",
-	},
-]
-
-export const freeModels = [
-	{
-		id: "agnes/agnes-2.5-flash",
-		name: "agnes/agnes-2.5-flash",
-		description: "免费体验",
-		label: "免费",
-	},
-	{
-		id: "agnes/agnes-2.0-flash",
-		name: "agnes/agnes-2.0-flash",
-		description: "免费体验",
-		label: "免费",
-	},
-	{
-		id: "ali/qwen3.5-4b",
-		name: "ali/qwen3.5-4b",
-		description: "免费体验",
-		label: "免费",
-	},
-	{
-		id: "intern/intern-s1",
-		name: "intern/intern-s1",
-		description: "免费体验",
-		label: "免费",
-	},
-	{
-		id: "intern/intern-s1-pro",
-		name: "intern/intern-s1-pro",
-		description: "免费体验",
-		label: "免费",
-	},
-	{
-		id: "intern/internvl3.5",
-		name: "intern/internvl3.5",
-		description: "免费体验",
-		label: "免费",
-	},
-	{
-		id: "intern/intern-s2-preview",
-		name: "intern/intern-s2-preview",
-		description: "免费体验",
-		label: "免费",
-	},
-]
-
-export const commonModels = [
-	{
-		id: "deepseek/deepseek-v4-pro",
-		name: "deepseek/deepseek-v4-pro",
-		description: "NEW",
-		label: "NEW",
-	},
-	{
-		id: "deepseek/deepseek-v4-flash-vision-exp",
-		name: "deepseek/deepseek-v4-flash-vision-exp",
-		description: "NEW",
-		label: "NEW",
-	},
-	{
-		id: "openai/gpt-6-astra",
-		name: "openai/gpt-6-astra",
-		description: "NEW",
-		label: "NEW",
-	},
-	{
-		id: "ali/qwen3.8-max-0902",
-		name: "ali/qwen3.8-max-0902",
-		description: "NEW",
-		label: "NEW",
-	},
-	{
-		id: "google/gemini-3.8-flash",
-		name: "google/gemini-3.8-flash",
-		description: "NEW",
-		label: "NEW",
-	},
-	{
-		id: "anthropic/claude-fable-5.1",
-		name: "anthropic/claude-fable-5.1",
-		description: "NEW",
-		label: "NEW",
-	},
-]
 const ShengSuanYunModelPicker: React.FC<ShengSuanYunModelPickerProps> = ({
 	isPopup,
 	currentMode,
@@ -184,7 +67,6 @@ const ShengSuanYunModelPicker: React.FC<ShengSuanYunModelPickerProps> = ({
 	const dropdownRef = useRef<HTMLDivElement>(null)
 	const itemRefs = useRef<(HTMLDivElement | null)[]>([])
 	const dropdownListRef = useRef<HTMLDivElement>(null)
-	const [activeTab, setActiveTab] = useState<"recommended" | "common" | "free">("recommended")
 
 	const { selectedModelId: providerModelId, selectedModelInfo: providerModelInfo } = useDynamicProviderSelection(
 		"shengsuanyun",
@@ -353,71 +235,6 @@ const ShengSuanYunModelPicker: React.FC<ShengSuanYunModelPickerProps> = ({
 				<label htmlFor={inputId}>
 					<span style={{ fontWeight: 500 }}>{label}</span>
 				</label>
-				{!models && (
-					<TabsContainer style={{ marginTop: 4 }}>
-						<Tab active={activeTab === "recommended"} onClick={() => setActiveTab("recommended")}>
-							体验模型
-						</Tab>
-						<Tab active={activeTab === "free"} onClick={() => setActiveTab("free")}>
-							免费模型
-						</Tab>
-						<Tab active={activeTab === "common"} onClick={() => setActiveTab("common")}>
-							前沿模型
-						</Tab>
-					</TabsContainer>
-				)}
-
-				{/* Model Cards */}
-				{!models && (
-					<div style={{ marginBottom: "6px" }}>
-						{activeTab === "recommended" && (
-							<>
-								<Lure from="CH_MC7LPRV0" />
-								{recommendedModels.map((model) => (
-									<FeaturedModelCard
-										description={model.description}
-										displayName={model.name || model.id}
-										isSelected={selectedModelId === model.id}
-										key={model.id}
-										label={model.label}
-										onClick={() => {
-											handleModelChange(model.id)
-											setIsDropdownVisible(false)
-										}}
-									/>
-								))}
-							</>
-						)}
-						{activeTab === "free" &&
-							freeModels.map((model) => (
-								<FeaturedModelCard
-									description={model.description}
-									displayName={model.name || model.id}
-									isSelected={selectedModelId === model.id}
-									key={model.id}
-									label={model.label}
-									onClick={() => {
-										handleModelChange(model.id)
-										setIsDropdownVisible(false)
-									}}
-								/>
-							))}
-						{activeTab === "common" &&
-							commonModels.map((model) => (
-								<FeaturedModelCard
-									description={model.description}
-									displayName={model.name || model.id}
-									isSelected={selectedModelId === model.id}
-									key={model.id}
-									label={model.label}
-									onClick={() => {
-										handleModelChange(model.id)
-										setIsDropdownVisible(false)
-									}}
-								/>
-							))}
-					</div>
-				)}
 				<DropdownWrapper ref={dropdownRef}>
 					<VSCodeTextField
 						id={inputId}
@@ -489,17 +306,7 @@ const ShengSuanYunModelPicker: React.FC<ShengSuanYunModelPickerProps> = ({
 						marginTop: 0,
 						color: "var(--vscode-descriptionForeground)",
 					}}>
-					该扩展会自动获取胜算云上可用的最新模型列表{" "}
-					<VSCodeLink href="https://router.shengsuanyun.com/model" style={{ display: "inline", fontSize: "inherit" }}>
-						胜算云
-					</VSCodeLink>
-					如果你不确定使用哪个模型, Cline Chinese 可以和{" "}
-					<VSCodeLink
-						onClick={() => handleModelChange("anthropic/claude-sonnet-5")}
-						style={{ display: "inline", fontSize: "inherit" }}>
-						anthropic/claude-sonnet-5
-					</VSCodeLink>
-					很好的工作
+					模型列表会自动从服务端刷新，也可以直接输入模型 ID。
 				</p>
 			)}
 		</div>
@@ -588,26 +395,5 @@ const _StyledMarkdown = styled.div`
 		&:hover {
 			text-decoration: underline;
 		}
-	}
-`
-
-const TabsContainer = styled.div`
-	display: flex;
-	gap: 0;
-	margin-bottom: 12px;
-	border-bottom: 1px solid #333;
-`
-
-const Tab = styled.div<{ active: boolean }>`
-	padding: 8px 16px;
-	cursor: pointer;
-	font-size: 12px;
-	font-weight: 500;
-	color: ${({ active }) => (active ? "var(--vscode-foreground)" : "var(--vscode-descriptionForeground)")};
-	border-bottom: 2px solid ${({ active }) => (active ? "var(--vscode-textLink-foreground)" : "transparent")};
-	transition: all 0.15s ease;
-
-	&:hover {
-		color: var(--vscode-foreground);
 	}
 `

@@ -92,13 +92,13 @@ describe("ChatTextArea model label", () => {
 
 	it("shows the local provider, model, and local-only controls for a local task", () => {
 		const { textarea } = renderTextArea()
-		expect(screen.getByTitle("Open API Settings")).toHaveTextContent("anthropic:text-only-model")
+		expect(screen.getByTitle(/推理强度与 API 设置/)).toHaveTextContent("text-only-model")
 		expect(screen.getByTestId("context-button")).toBeInTheDocument()
 		expect(screen.getByTestId("mcp-toggle")).toBeInTheDocument()
 		expect(screen.getByTestId("rules-toggle")).toBeInTheDocument()
-		expect(screen.getByText(/Type @ for context/)).toBeInTheDocument()
+		expect(screen.getByText(/输入 @ 获取上下文/)).toBeInTheDocument()
 		fireEvent.change(textarea, { target: { value: "@", selectionStart: 1 } })
-		expect(screen.getByText("Problems")).toBeInTheDocument()
+		expect(screen.getByText("问题")).toBeInTheDocument()
 	})
 
 	it.each([
@@ -107,15 +107,15 @@ describe("ChatTextArea model label", () => {
 	])("shows the cloud model and hides local-only controls when %s", (_case, cloudState) => {
 		mocks.cloudState = { ...cloudState, cloudModelId: "anthropic/claude-sonnet-4.5" }
 		const { textarea } = renderTextArea()
-		expect(screen.getByTitle("Open API Settings")).toHaveTextContent("cline:anthropic/claude-sonnet-4.5")
+		expect(screen.getByTitle(/推理强度与 API 设置/)).toHaveTextContent("anthropic/claude-sonnet-4.5")
 		expect(screen.queryByTestId("mode-switch")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("context-button")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("mcp-toggle")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("rules-toggle")).not.toBeInTheDocument()
 		expect(screen.getByTestId("files-button")).toBeInTheDocument()
-		expect(screen.queryByText(/Type @ for context/)).not.toBeInTheDocument()
+		expect(screen.queryByText(/输入 @ 获取上下文/)).not.toBeInTheDocument()
 		fireEvent.change(textarea, { target: { value: "@", selectionStart: 1 } })
-		expect(screen.queryByText("Problems")).not.toBeInTheDocument()
+		expect(screen.queryByText("问题")).not.toBeInTheDocument()
 	})
 })
 
@@ -185,5 +185,34 @@ describe("ChatTextArea image attachments vs. model capability", () => {
 		renderTextArea()
 
 		expect(screen.queryByTestId("images-unsupported-notice")).not.toBeInTheDocument()
+	})
+})
+
+
+describe("ChatTextArea cancel action", () => {
+	it("shows the cancel control in the send slot and calls onCancel", () => {
+		const onCancel = vi.fn()
+		render(
+			<ChatTextArea
+				activeQuote={null}
+				inputValue=""
+				onCancel={onCancel}
+				onSelectFilesAndImages={vi.fn()}
+				onSend={vi.fn()}
+				placeholderText="Type a message"
+				selectedFiles={[]}
+				selectedImages={[]}
+				sendingDisabled={true}
+				setInputValue={vi.fn()}
+				setSelectedFiles={vi.fn()}
+				setSelectedImages={vi.fn()}
+				shouldDisableFilesAndImages={false}
+				showCancel={true}
+			/>,
+		)
+
+		expect(screen.queryByTestId("send-button")).not.toBeInTheDocument()
+		fireEvent.click(screen.getByTestId("cancel-button"))
+		expect(onCancel).toHaveBeenCalledTimes(1)
 	})
 })

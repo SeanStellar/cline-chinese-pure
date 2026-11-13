@@ -148,9 +148,13 @@
 				"icon": "$(history)"
 			},
 			{
-				"command": "cline-chinese.accountButtonClicked",
-				"title": "账户",
-				"icon": "$(account)"
+				"command": "cline-chinese.usageButtonClicked",
+				"title": "使用统计",
+				"icon": "$(graph)"
+			},
+			{
+				"command": "cline-chinese.addSelectedFilesToChat",
+				"title": "添加到 Cline 对话"
 			},
 			{
 				"command": "cline-chinese.settingsButtonClicked",
@@ -270,7 +274,7 @@
 					"when": "view == cline-chinese.SidebarProvider"
 				},
 				{
-					"command": "cline-chinese.accountButtonClicked",
+					"command": "cline-chinese.usageButtonClicked",
 					"group": "navigation@5",
 					"when": "view == cline-chinese.SidebarProvider"
 				},
@@ -278,6 +282,12 @@
 					"command": "cline-chinese.settingsButtonClicked",
 					"group": "navigation@6",
 					"when": "view == cline-chinese.SidebarProvider"
+				}
+			],
+			"explorer/context": [
+				{
+					"command": "cline-chinese.addSelectedFilesToChat",
+					"group": "navigation@1"
 				}
 			],
 			"editor/context": [
@@ -395,6 +405,7 @@
 		"install:all": "bun install",
 		"dev:webview": "node scripts/clean-webview-vite-cache.mjs && cd webview-ui && bun run dev",
 		"build:webview": "bun run protos && cd webview-ui && bun run build",
+		"build:webview:lowmem": "bun run protos && cd webview-ui && bun run build:lowmem",
 		"test:webview": "cd webview-ui && bun run test",
 		"publish:marketplace": "node scripts/publish-marketplace.mjs",
 		"publish:marketplace:prerelease": "node scripts/publish-marketplace.mjs --pre-release",

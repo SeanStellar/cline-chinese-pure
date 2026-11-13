@@ -93,7 +93,7 @@ describe.each([
 
 		render(<Provider currentMode="act" showModelOptions={true} />)
 
-		expect(screen.getByText("Reasoning Effort")).toBeInTheDocument()
+		expect(screen.getByText("思考强度")).toBeInTheDocument()
 	})
 
 	it("hides the reasoning effort selector for non-reasoning models", () => {
@@ -101,6 +101,6 @@ describe.each([
 
 		render(<Provider currentMode="act" showModelOptions={true} />)
 
-		expect(screen.queryByText("Reasoning Effort")).not.toBeInTheDocument()
+		expect(screen.queryByText("思考强度")).not.toBeInTheDocument()
 	})
 })

@@ -5,7 +5,7 @@ import { PlanActMode, TogglePlanActModeRequest } from "@shared/proto/cline/state
 import { type SlashCommand } from "@shared/slashCommands"
 import { Mode } from "@shared/storage/types"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
-import { AtSignIcon, PlusIcon, TriangleAlertIcon } from "lucide-react"
+import { AtSignIcon, ChevronDownIcon, PlusIcon, TriangleAlertIcon } from "lucide-react"
 import type React from "react"
 import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import DynamicTextArea from "react-textarea-autosize"
@@ -15,6 +15,7 @@ import { CHAT_CONSTANTS } from "@/components/chat/chat-view/constants"
 import SlashCommandMenu from "@/components/chat/SlashCommandMenu"
 import Thumbnails from "@/components/common/Thumbnails"
 import { getModeSpecificFields } from "@/components/settings/utils/providerUtils"
+import { REASONING_EFFORT_LABELS } from "@/components/settings/utils/reasoningEffort"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { usePlatform } from "@/context/PlatformContext"
@@ -32,6 +33,7 @@ import {
 	shouldShowContextMenu,
 } from "@/utils/context-mentions"
 import { useMetaKeyDetection, useShortcut } from "@/utils/hooks"
+import { getModeLabels } from "@/utils/modeLabels"
 import { isSafari } from "@/utils/platformUtils"
 import {
 	getMatchingSlashCommands,
@@ -43,7 +45,9 @@ import {
 	validateSlashCommand,
 } from "@/utils/slash-commands"
 import ClineRulesToggleModal from "../cline-rules/ClineRulesToggleModal"
+import AutoApproveBar from "./auto-approve-menu/AutoApproveBar"
 import { getModeToggleDraftAction } from "./chat-textarea-mode-toggle"
+import ModelProfileMenu from "./model-profiles/ModelProfileMenu"
 import ServersToggleModal from "./ServersToggleModal"
 
 const { MAX_IMAGES_AND_FILES_PER_MESSAGE } = CHAT_CONSTANTS
@@ -80,12 +84,15 @@ interface ChatTextAreaProps {
 	setSelectedImages: React.Dispatch<React.SetStateAction<string[]>>
 	setSelectedFiles: React.Dispatch<React.SetStateAction<string[]>>
 	onSend: () => void
+	onCancel?: () => void
+	showCancel?: boolean
 	onSelectFilesAndImages: () => void
 	shouldDisableFilesAndImages: boolean
 	onHeightChange?: (height: number) => void
 	onFocusChange?: (isFocused: boolean) => void
 	batchMode?: boolean
 	onBatchModeChange?: (batch: boolean, mode?: "plan" | "act") => void
+	hideAutoApprove?: boolean
 }
 
 interface GitCommit {
@@ -97,7 +104,6 @@ interface GitCommit {
 
 const PLAN_MODE_COLOR = "var(--vscode-activityWarningBadge-background)"
 const ACT_MODE_COLOR = "var(--vscode-focusBorder)"
-const BATCH_MODE_COLOR = "var(--vscode-activityBarBadge-background)"
 
 const SwitchContainer = styled.div`
 	display: flex;
@@ -115,13 +121,13 @@ const SwitchContainer = styled.div`
 
 const Slider = styled.div.withConfig({
 	shouldForwardProp: (prop) => !["position"].includes(prop),
-})<{ position: 0 | 1 | 2 }>`
+})<{ position: 0 | 1 }>`
 	position: absolute;
 	height: 100%;
-	width: 33.333%;
-	background-color: ${(props) => (props.position === 0 ? PLAN_MODE_COLOR : props.position === 1 ? ACT_MODE_COLOR : BATCH_MODE_COLOR)};
+	width: 50%;
+	background-color: ${(props) => (props.position === 0 ? PLAN_MODE_COLOR : ACT_MODE_COLOR)};
 	transition: transform 0.2s ease;
-	transform: translateX(${(props) => (props.position === 0 ? "0%" : props.position === 1 ? "100%" : "200%")});
+	transform: translateX(${(props) => (props.position === 0 ? "0%" : "100%")});
 `
 
 const ButtonGroup = styled.div`
@@ -145,11 +151,12 @@ const ButtonContainer = styled.div`
 const ModelContainer = styled.div`
 	position: relative;
 	display: flex;
-	flex: 1;
+	flex: 0 1 auto;
 	min-width: 0;
 `
 
 const ModelButtonWrapper = styled.div`
+	position: relative;
 	display: inline-flex; // Make it shrink to content
 	min-width: 0; // Allow shrinking
 	max-width: 100%; // Don't overflow parent
@@ -189,14 +196,6 @@ const ModelDisplayButton = styled.a<{ isActive?: boolean; disabled?: boolean }>`
 	}
 `
 
-const ModelButtonContent = styled.div`
-	width: 100%;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-`
-
 const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 	(
 		{
@@ -209,12 +208,15 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			setSelectedImages,
 			setSelectedFiles,
 			onSend,
+			onCancel,
+			showCancel = false,
 			onSelectFilesAndImages,
 			shouldDisableFilesAndImages,
 			onHeightChange,
 			onFocusChange,
 			batchMode = false,
 			onBatchModeChange = () => {},
+			hideAutoApprove = false,
 		},
 		ref,
 	) => {
@@ -234,6 +236,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			cloudTaskTarget,
 			currentCloudTask,
 			cloudModelId,
+			preferredLanguage,
 		} = useExtensionState()
 		// Cloud sessions are Act-only (like the desktop app and the cloud dashboard).
 		// While a cloud task is shown, or a new task is about to run in the cloud,
@@ -241,8 +244,14 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const cloudActOnly =
 			!!currentCloudTask || (clineMessages.length === 0 && !!cloudSessionsEnabled && cloudTaskTarget?.target === "cloud")
 		const mode = cloudActOnly ? "act" : selectedMode
+		const modeLabels = getModeLabels(preferredLanguage)
+
+		const profileMenuRef = useRef<HTMLDivElement>(null)
+		const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
 		const [isTextAreaFocused, setIsTextAreaFocused] = useState(false)
 		const [isDraggingOver, setIsDraggingOver] = useState(false)
+		const [dropNotice, setDropNotice] = useState("")
+		const dropNoticeTimerRef = useRef<NodeJS.Timeout | null>(null)
 		const [gitCommits, setGitCommits] = useState<GitCommit[]>([])
 		const [showSlashCommandsMenu, setShowSlashCommandsMenu] = useState(false)
 		const [selectedSlashCommandsIndex, setSelectedSlashCommandsIndex] = useState(0)
@@ -276,6 +285,17 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const [searchLoading, setSearchLoading] = useState(false)
 		const [, metaKeyChar] = useMetaKeyDetection(platform)
 		const { selectedProvider, selectedModelId, selectedModelInfo } = useNormalizedApiConfiguration(mode)
+		const reasoningEffort = getModeSpecificFields(apiConfiguration, mode).reasoningEffort
+		const supportsReasoning =
+			selectedProvider === "shengsuanyun" ||
+			selectedProvider === "openai" ||
+			!selectedModelInfo ||
+			!!selectedModelInfo.supportsReasoning ||
+			!!selectedModelInfo.capabilities?.includes("reasoning")
+		const reasoningEffortLabel =
+			reasoningEffort && reasoningEffort in REASONING_EFFORT_LABELS
+				? REASONING_EFFORT_LABELS[reasoningEffort as keyof typeof REASONING_EFFORT_LABELS]
+				: null
 		// Images are attached regardless; when the selected model has no image input the thumbnails get a warning
 		// badge and a notice offers to switch models. Unknown capability data fails open, like core does.
 		const modelSupportsImages = selectedModelInfo.supportsImages !== false
@@ -1246,6 +1266,11 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			}
 		}, [apiConfiguration, mode, selectedProvider, selectedModelId, cloudActOnly, cloudModelId])
 
+		// The card only shows the model itself; the provider is visible in settings.
+		const modelOnlyLabel = cloudActOnly
+			? modelDisplayName.replace(/^[^:]+:/, "")
+			: selectedModelInfo?.name?.trim() || modelDisplayName.replace(/^[^:]+:/, "")
+
 		// Function to show error message for unsupported files for drag and drop
 		const showUnsupportedFileErrorMessage = () => {
 			// Show error message for unsupported files
@@ -1267,9 +1292,9 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			e.preventDefault()
 			setIsDraggingOver(true)
 
-			// Check if files are being dragged
-			if (e.dataTransfer.types.includes("Files")) {
-				// Check if any of the files are not images
+			// Only warn when file attachments are actually disabled (e.g. cloud
+			// sessions). Non-image files are supported for local drops.
+			if (shouldDisableFilesAndImages && e.dataTransfer.types.includes("Files")) {
 				const items = Array.from(e.dataTransfer.items)
 				const hasNonImageFile = items.some((item) => {
 					if (item.kind === "file") {
@@ -1323,15 +1348,28 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			}
 		}, [])
 
+		const showDropNotice = (message: string) => {
+			setDropNotice(message)
+			if (dropNoticeTimerRef.current) {
+				clearTimeout(dropNoticeTimerRef.current)
+			}
+			dropNoticeTimerRef.current = setTimeout(() => {
+				setDropNotice("")
+				dropNoticeTimerRef.current = null
+			}, 5000)
+		}
+
 		/**
 		 * Handles the drop event for files and text.
 		 * Processes dropped images and text, updating the state accordingly.
 		 *
 		 * @param {React.DragEvent} e - The drop event.
 		 */
-		const onDrop = async (e: React.DragEvent) => {
+		const handleDropData = async (e: React.DragEvent) => {
 			e.preventDefault()
 			setIsDraggingOver(false) // Reset state on drop
+			const dataTransferTypes = Array.from(e.dataTransfer.types || [])
+			let handledDrop = false
 
 			// Clear any error message when something is actually dropped
 			setShowUnsupportedFileError(false)
@@ -1344,6 +1382,20 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			let uris: string[] = []
 			const resourceUrlsData = e.dataTransfer.getData("resourceurls")
 			const vscodeUriListData = e.dataTransfer.getData("application/vnd.code.uri-list")
+			const textUriListData = e.dataTransfer.getData("text/uri-list")
+			const plainTextData = e.dataTransfer.getData("text/plain")
+			console.log("[Cline drop]", {
+				types: dataTransferTypes,
+				resourceUrlsData,
+				vscodeUriListData,
+				textUriListData,
+				plainTextData,
+				files: Array.from(e.dataTransfer.files).map((file) => ({
+					name: file.name,
+					type: file.type,
+					size: file.size,
+				})),
+			})
 
 			// 1a. Try 'resourceurls' first (used for multi-select)
 			if (resourceUrlsData) {
@@ -1361,34 +1413,122 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				uris = vscodeUriListData.split("\n").map((uri) => uri.trim())
 			}
 
-			// 1c. Filter for valid schemes (file or vscode-file) and non-empty strings
-			const validUris = uris.filter(
-				(uri) => uri && (uri.startsWith("vscode-file:") || uri.startsWith("file:") || uri.startsWith("vscode-remote:")),
-			)
+			// 1c. Fallback to the standard 'text/uri-list' format
+			if (uris.length === 0 && textUriListData) {
+				uris = textUriListData
+					.split(/\r?\n/)
+					.map((uri) => uri.trim())
+					.filter((uri) => uri.length > 0 && !uri.startsWith("#"))
+			}
+
+			// 1d. Some drag sources only expose a plain-text path list
+			if (uris.length === 0 && plainTextData) {
+				const candidates = plainTextData
+					.split(/\r?\n/)
+					.map((value) => value.trim())
+					.filter(Boolean)
+				if (
+					candidates.length > 0 &&
+					candidates.every(
+						(value) =>
+							/^[a-zA-Z]:[\\/]/.test(value) ||
+							value.startsWith("file:") ||
+							value.startsWith("vscode-file:") ||
+							value.startsWith("vscode-remote:"),
+					)
+				) {
+					uris = candidates
+				}
+			}
+
+			const normalizeToUri = (value: string) => {
+				const trimmed = value.trim()
+				if (/^[a-zA-Z]:[\\/]/.test(trimmed)) {
+					return `file:///${encodeURI(trimmed.replace(/\\/g, "/"))}`
+				}
+				return trimmed
+			}
+
+			// 1e. Filter for valid schemes (file or vscode-file) and non-empty strings
+			const validUris = [
+				...new Set(
+					uris
+						.map(normalizeToUri)
+						.filter(
+							(uri) =>
+								uri &&
+								(uri.startsWith("vscode-file:") ||
+									uri.startsWith("file:") ||
+									uri.startsWith("vscode-remote:")),
+						),
+				),
+			]
 
 			if (validUris.length > 0) {
-				setPendingInsertions([])
-				let initialCursorPos = inputValue.length
-				if (textAreaRef.current) {
-					initialCursorPos = textAreaRef.current.selectionStart
-				}
-				setIntendedCursorPosition(initialCursorPos)
+				const imageExtension = /\.(png|jpe?g|webp|gif)$/i
+				const imageUris = validUris.filter((uri) => imageExtension.test(decodeURIComponent(uri)))
+				const otherUris = validUris.filter((uri) => !imageExtension.test(decodeURIComponent(uri)))
 
-				FileServiceClient.getRelativePaths(RelativePathsRequest.create({ uris: validUris }))
-					.then((response) => {
+				if (imageUris.length > 0) {
+					const results = await Promise.all(
+						imageUris.map(async (uri) => {
+							try {
+								const response = await FileServiceClient.readImageDataUrl(
+									StringRequest.create({ value: uri }),
+								)
+								return { uri, dataUrl: response.value }
+							} catch (error) {
+								console.error("Failed to read dropped image:", error)
+								return { uri, dataUrl: null }
+							}
+						}),
+					)
+					const dataUrls = results.map((result) => result.dataUrl).filter((value): value is string => !!value)
+					const availableSlots =
+						MAX_IMAGES_AND_FILES_PER_MESSAGE - selectedImages.length - selectedFiles.length
+					const imagesToAdd = dataUrls.slice(0, Math.max(0, availableSlots))
+					if (imagesToAdd.length > 0) {
+						setSelectedImages((prev) => [...prev, ...imagesToAdd])
+						handledDrop = true
+						showDropNotice(`已添加 ${imagesToAdd.length} 张图片。`)
+					}
+					const failedImageUris = results.filter((result) => !result.dataUrl).map((result) => result.uri)
+					if (failedImageUris.length > 0) {
+						otherUris.push(...failedImageUris)
+					}
+				}
+
+				if (otherUris.length > 0) {
+					setPendingInsertions([])
+					let initialCursorPos = inputValue.length
+					if (textAreaRef.current) {
+						initialCursorPos = textAreaRef.current.selectionStart
+					}
+					setIntendedCursorPosition(initialCursorPos)
+
+					try {
+						const response = await FileServiceClient.getRelativePaths(
+							RelativePathsRequest.create({ uris: otherUris }),
+						)
 						if (response.paths.length > 0) {
 							setPendingInsertions((prev) => [...prev, ...response.paths])
+							handledDrop = true
+							showDropNotice(`已添加 ${response.paths.length} 项引用。`)
+						} else {
+							showDropNotice("拖入的路径不在当前工作区，或无法转换为相对路径。")
 						}
-					})
-					.catch((error) => {
+					} catch (error) {
 						console.error("Error getting relative paths:", error)
-					})
+						showDropNotice("解析拖入路径失败，请从 VS Code 资源管理器重试。")
+					}
+				}
 				return
 			}
 
 			const text = e.dataTransfer.getData("text")
 			if (text) {
 				handleTextDrop(text)
+				handledDrop = true
 				return
 			}
 
@@ -1415,11 +1555,113 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				if (availableSlots > 0) {
 					const imagesToAdd = Math.min(dataUrls.length, availableSlots)
 					setSelectedImages((prevImages) => [...prevImages, ...dataUrls.slice(0, imagesToAdd)])
+					handledDrop = true
 				}
 			} else {
 				console.warn("No valid images were processed")
 			}
+
+			// --- 4. Non-image files dropped from the OS ---
+			// VS Code webviews no longer expose absolute paths for dropped files on
+			// recent Electron versions; use them when available, otherwise insert
+			// the contents of small text files so the drop is still useful.
+			const nonImageFiles = files.filter((file) => !imageFiles.includes(file))
+			if (nonImageFiles.length === 0) {
+				if (!handledDrop) {
+					showDropNotice(`未识别的拖入内容（格式：${dataTransferTypes.join(", ") || "无"}）`)
+				}
+				return
+			}
+
+			const nativePaths = nonImageFiles
+				.map((file) => (file as File & { path?: string }).path)
+				.filter((path): path is string => typeof path === "string" && path.length > 0)
+
+			if (nativePaths.length > 0) {
+				const uris = nativePaths.map((path) =>
+					path.startsWith("file:") ? path : `file://${encodeURI(path.replace(/\\/g, "/"))}`,
+				)
+				try {
+					const response = await FileServiceClient.getRelativePaths(RelativePathsRequest.create({ uris }))
+					if (response.paths.length > 0) {
+						setPendingInsertions((prev) => [...prev, ...response.paths])
+						return
+					}
+				} catch (error) {
+					console.error("Error getting relative paths for dropped files:", error)
+				}
+			}
+
+			const hasDirectory = Array.from(e.dataTransfer.items || []).some(
+				(item) => item.webkitGetAsEntry?.()?.isDirectory,
+			)
+			if (hasDirectory) {
+				showDropNotice("系统文件夹无法直接读取路径，请从 VS Code 资源管理器拖入文件夹。")
+				return
+			}
+
+			const textExtensions =
+				/\.(txt|md|markdown|json|jsonc|js|jsx|ts|tsx|css|scss|less|html|py|java|c|cc|cpp|h|hpp|cs|go|rs|rb|php|sh|bat|ps1|yml|yaml|toml|ini|xml|sql)$/i
+			let textToInsert = ""
+			let insertedCount = 0
+			for (const file of nonImageFiles) {
+				const isTextLike = file.type.startsWith("text/") || textExtensions.test(file.name)
+				if (isTextLike && file.size <= 200_000) {
+					try {
+						const content = await file.text()
+						textToInsert += `\n\n<file name="${file.name}">\n${content}\n</file>\n\n`
+						insertedCount += 1
+					} catch (error) {
+						console.error(`Failed to read dropped file ${file.name}:`, error)
+					}
+				}
+			}
+
+			if (textToInsert) {
+				handleTextDrop(textToInsert)
+				showDropNotice(`已插入 ${insertedCount} 个文件的内容（系统拖入无法获取文件路径）。`)
+			} else {
+				showDropNotice("无法读取拖入的文件路径，请从 VS Code 资源管理器拖入，或使用 + 按钮选择文件。")
+			}
 		}
+
+		const onDrop = (e: React.DragEvent) => {
+			e.preventDefault()
+			e.stopPropagation()
+			void handleDropData(e)
+		}
+
+		// Allow dropping anywhere inside the Cline panel, not just the composer.
+		// VS Code only forwards Explorer drags to webviews while Shift is held.
+		const dropDataHandlerRef = useRef<((event: React.DragEvent) => void) | null>(null)
+		dropDataHandlerRef.current = handleDropData
+		useEffect(() => {
+			const isFileDrop = (event: DragEvent) => {
+				const types = Array.from(event.dataTransfer?.types || [])
+				return (
+					types.includes("Files") ||
+					types.some((type) => type === "resourceurls" || type.toLowerCase().includes("uri-list"))
+				)
+			}
+			const onDocumentDragOver = (event: DragEvent) => {
+				if (isFileDrop(event)) {
+					event.preventDefault()
+				}
+			}
+			const onDocumentDrop = (event: DragEvent) => {
+				if (!isFileDrop(event) || event.defaultPrevented) {
+					return
+				}
+				event.preventDefault()
+				dropDataHandlerRef.current?.(event as unknown as React.DragEvent)
+			}
+			document.addEventListener("dragover", onDocumentDragOver)
+			document.addEventListener("drop", onDocumentDrop)
+			return () => {
+				document.removeEventListener("dragover", onDocumentDragOver)
+				document.removeEventListener("drop", onDocumentDrop)
+			}
+		}, [])
 
 		/**
 		 * Handles the drop event for text.
@@ -1495,6 +1737,13 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					{showUnsupportedFileError && (
 						<div className="absolute inset-2.5 bg-[rgba(var(--vscode-errorForeground-rgb),0.1)] border-2 border-error rounded-xs flex items-center justify-center z-10 pointer-events-none">
 							<span className="text-error font-bold text-xs">当前禁用了除图片以外的文件</span>
+						</div>
+					)}
+					{isDraggingOver && !showUnsupportedFileError && (
+						<div className="pointer-events-none absolute inset-2.5 z-10 flex items-center justify-center rounded border-2 border-(--vscode-focusBorder) bg-(--vscode-editorWidget-background)">
+							<span className="rounded bg-(--vscode-editorWidget-background) px-2 py-1 text-xs text-foreground shadow">
+								松开鼠标以添加文件 / 文件夹 / 图片
+							</span>
 						</div>
 					)}
 					{showSlashCommandsMenu && (
@@ -1631,8 +1880,8 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					{!inputValue && selectedImages.length === 0 && selectedFiles.length === 0 && (
 						<div className="text-xs absolute bottom-5 left-6.5 right-16 text-(--vscode-input-placeholderForeground)/50 whitespace-nowrap overflow-hidden text-ellipsis pointer-events-none z-1">
 							{cloudActOnly
-								? "输入“/”以使用斜杠命令和工作流程；按住 Shift 键即可拖入图片。"
-								: "输入 @ 以获取上下文，输入 / 以使用斜杠命令及工作流；按住 Shift 键即可拖入文件或图片。"}
+								? "输入“/”以使用斜杠命令和工作流程；拖动时按住 Shift 可添加文件、文件夹或图片。"
+								: "输入 @ 获取上下文，输入 / 使用斜杠命令及工作流；拖动时按住 Shift 可添加文件、文件夹或图片。"}
 						</div>
 					)}
 					{(selectedImages.length > 0 || selectedFiles.length > 0) && (
@@ -1657,15 +1906,25 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						className="absolute flex items-end bottom-4.5 right-5 z-10 h-8 text-xs"
 						style={{ height: textAreaBaseHeight }}>
 						<div className="flex flex-row items-center">
-							<div
-								className={cn("input-icon-button", { disabled: sendingDisabled }, "codicon codicon-send text-sm")}
-								data-testid="send-button"
-								onClick={() => {
-									if (!sendingDisabled) {
-										onSend()
-									}
-								}}
-							/>
+							{showCancel && onCancel ? (
+								<div
+									aria-label="取消任务"
+									className="input-icon-button codicon codicon-debug-stop text-sm text-(--vscode-errorForeground)"
+									data-testid="cancel-button"
+									onClick={() => onCancel()}
+									title="取消任务"
+								/>
+							) : (
+								<div
+									className={cn("input-icon-button", { disabled: sendingDisabled }, "codicon codicon-send text-sm")}
+									data-testid="send-button"
+									onClick={() => {
+										if (!sendingDisabled) {
+											onSend()
+										}
+									}}
+								/>
+							)}
 						</div>
 					</div>
 				</div>
@@ -1690,6 +1949,9 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							or remove {selectedImages.length === 1 ? "it" : "them"}.
 						</span>
 					</div>
+				)}
+				{dropNotice && (
+					<div className="px-3.5 pb-1 text-[11px] text-(--vscode-descriptionForeground)">{dropNotice}</div>
 				)}
 				<div className="flex justify-between items-center -mt-[2px] px-3 pb-2">
 					{/* Always render both components, but control visibility with CSS */}
@@ -1743,21 +2005,44 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								</>
 							)}
 
-							<ModelContainer>
-								<ModelButtonWrapper>
+							<div className="ml-auto flex min-w-0 items-center gap-2">
+								{!hideAutoApprove && <AutoApproveBar compact />}
+								<ModelContainer>
+								<ModelButtonWrapper ref={profileMenuRef}>
 									<ModelDisplayButton
 										disabled={false}
-										onClick={handleModelButtonClick}
+										onClick={() => setIsProfileMenuOpen((prev) => !prev)}
 										role="button"
+										style={{ textDecoration: "none" }}
 										tabIndex={0}
-										title="打开 API 设置">
-										<ModelButtonContent className="text-xs">{modelDisplayName}</ModelButtonContent>
+										title={`${modelDisplayName} · 推理强度与 API 设置`}>
+										<span className="flex h-[18px] min-w-0 items-center gap-1 rounded border border-(--vscode-widget-border) px-1.5">
+											<span className="max-w-[240px] truncate text-[10px]">{modelOnlyLabel}</span>
+											{supportsReasoning && reasoningEffortLabel ? (
+												<span className="shrink-0 rounded bg-(--vscode-badge-background) px-1 text-[9px] text-(--vscode-badge-foreground)">
+													{reasoningEffortLabel}
+												</span>
+											) : null}
+											<ChevronDownIcon className="shrink-0" size={10} />
+										</span>
 									</ModelDisplayButton>
+									{isProfileMenuOpen && (
+										<ModelProfileMenu
+											anchorRef={profileMenuRef}
+											currentMode={mode}
+											displayName={modelOnlyLabel}
+											modelId={selectedModelId}
+											onClose={() => setIsProfileMenuOpen(false)}
+											reasoningEffort={reasoningEffort}
+											supportsReasoning={supportsReasoning}
+										/>
+									)}
 								</ModelButtonWrapper>
-							</ModelContainer>
+								</ModelContainer>
+							</div>
 						</ButtonGroup>
 					</div>
-					{/* The Plan/Act/Batch toggle is hidden for cloud act-only sessions. */}
+					{/* The Plan/Act toggle is hidden for cloud act-only sessions. */}
 					{!cloudActOnly && (
 						<Tooltip>
 							<TooltipContent
@@ -1771,27 +2056,22 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							</TooltipContent>
 							<TooltipTrigger>
 								<SwitchContainer data-testid="mode-switch">
-									<Slider position={batchMode ? 2 : mode === "act" ? 1 : 0} />
-									{["Plan", "Act", "Batch"].map((m) => {
-										const lower = m.toLowerCase()
-										const isSelected = lower === "batch" ? batchMode : !batchMode && mode === lower
+									<Slider position={mode === "act" ? 1 : 0} />
+									{(["plan", "act"] as const).map((key) => {
+										const isSelected = !batchMode && mode === key
 										return (
 											<div
 												aria-checked={isSelected}
 												className={cn(
-													"pt-0.5 pb-px px-4 z-10 text-xs w-1/3 text-center bg-transparent",
+													"pt-0.5 pb-px px-4 z-10 text-xs w-1/2 text-center bg-transparent",
 													isSelected ? "text-white" : "text-input-foreground",
 												)}
-												key={m}
-												onClick={() => handleModeSegmentClick(m)}
+												key={key}
+												onClick={() => handleModeSegmentClick(key)}
 												onMouseLeave={() => setShownTooltipMode(null)}
-												onMouseOver={() =>
-													setShownTooltipMode(
-														lower === "plan" ? "plan" : lower === "act" ? "act" : null,
-													)
-												}
+												onMouseOver={() => setShownTooltipMode(key)}
 												role="switch">
-												{m}
+												{modeLabels[key]}
 											</div>
 										)
 									})}

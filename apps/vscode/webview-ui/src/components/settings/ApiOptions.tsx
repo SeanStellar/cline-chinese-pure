@@ -1,6 +1,7 @@
 import type { Mode } from "@shared/storage/types"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import Fuse from "fuse.js"
+import { StarIcon } from "lucide-react"
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react"
 import styled from "styled-components"
 
@@ -8,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { PLATFORM_CONFIG, PlatformType } from "@/config/platform.config"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useProviderListings } from "@/hooks/useProviderListings"
+import { getProviderDisplayName } from "@/utils/providerNames"
 // import { ClinePassHint } from "./ClinePassHint"
 import { OPENROUTER_MODEL_PICKER_Z_INDEX } from "./OpenRouterModelPicker"
 import { AIhubmixProvider } from "./providers/AihubmixProvider"
@@ -29,6 +31,8 @@ import { MoonshotProvider } from "./providers/MoonshotProvider"
 import { OcaProvider } from "./providers/OcaProvider"
 import { OllamaProvider } from "./providers/OllamaProvider"
 import { OpenAICompatibleProvider } from "./providers/OpenAICompatible"
+import { applyProviderPreset } from "./providers/providerPresetActions"
+import { parseProviderPresets, type ProviderPreset } from "./providers/providerPresets"
 import { OpenAINativeProvider } from "./providers/OpenAINative"
 import { OpenAiCodexProvider } from "./providers/OpenAiCodexProvider"
 import { OpenRouterProvider } from "./providers/OpenRouterProvider"
@@ -62,6 +66,27 @@ interface ApiOptionsProps {
 // This is necessary to ensure dropdown opens downward, important for when this is used in popup
 export const DROPDOWN_Z_INDEX = OPENROUTER_MODEL_PICKER_Z_INDEX + 2 // Higher than the OpenRouterModelPicker's and ModelSelectorTooltip's z-index
 
+const PROVIDER_FAVORITES_KEY = "cline-chinese.provider-favorites.v1"
+const PROVIDER_RECENTS_KEY = "cline-chinese.provider-recents.v1"
+
+function loadProviderList(key: string): string[] {
+	try {
+		const raw = localStorage.getItem(key)
+		const parsed = raw ? JSON.parse(raw) : []
+		return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : []
+	} catch {
+		return []
+	}
+}
+
+function saveProviderList(key: string, list: string[]): void {
+	try {
+		localStorage.setItem(key, JSON.stringify(list))
+	} catch {
+		// ignore storage errors
+	}
+}
+
 export const DropdownContainer = styled.div<{ zIndex?: number }>`
 	position: relative;
 	z-index: ${(props) => props.zIndex || DROPDOWN_Z_INDEX};
@@ -92,7 +117,8 @@ const ApiOptions = ({
 	initialModelTab,
 }: ApiOptionsProps) => {
 	// Use full context state for immediate save payload
-	const { apiConfiguration, remoteConfigSettings } = useExtensionState()
+	const { apiConfiguration, remoteConfigSettings, preferredLanguage, providerPresets } = useExtensionState()
+	const customProviderPresets = useMemo(() => parseProviderPresets(providerPresets), [providerPresets])
 
 	const selectedProvider =
 		(currentMode === "plan" ? apiConfiguration?.planModeApiProvider : apiConfiguration?.actModeApiProvider) || "shengsuanyun"
@@ -118,6 +144,8 @@ const ApiOptions = ({
 	const [searchTerm, setSearchTerm] = useState("")
 	const [isDropdownVisible, setIsDropdownVisible] = useState(false)
 	const [selectedIndex, setSelectedIndex] = useState(-1)
+	const [favoriteProviders, setFavoriteProviders] = useState<string[]>(() => loadProviderList(PROVIDER_FAVORITES_KEY))
+	const [recentProviders, setRecentProviders] = useState<string[]>(() => loadProviderList(PROVIDER_RECENTS_KEY))
 	const dropdownRef = useRef<HTMLDivElement>(null)
 	const itemRefs = useRef<(HTMLDivElement | null)[]>([])
 	const dropdownListRef = useRef<HTMLDivElement>(null)
@@ -128,7 +156,10 @@ const ApiOptions = ({
 		// instead of a static hand-maintained list.
 		let providers = catalogProviderListings.map((provider) => ({
 			value: provider.id,
-			label: provider.name,
+			label:
+				provider.id === "openai" || provider.id === "openai-compatible"
+					? "自定义（OpenAI Compatible）"
+					: getProviderDisplayName(provider.id, provider.name, preferredLanguage),
 		}))
 		// Filter by platform
 		if (PLATFORM_CONFIG.type !== PlatformType.VSCODE) {
@@ -141,17 +172,20 @@ const ApiOptions = ({
 		if (remoteProviders.length > 0) {
 			providers = providers.filter((option) => remoteProviders.includes(option.value))
 		}
-		providers.sort((a, b) => {
-			if (a.value === "shengsuanyun") {
-				return -1
+		const rank = (id: string) => {
+			const favoriteIndex = favoriteProviders.indexOf(id)
+			if (favoriteIndex >= 0) {
+				return favoriteIndex
 			}
-			if (b.value === "shengsuanyun") {
-				return 1
+			const recentIndex = recentProviders.indexOf(id)
+			if (recentIndex >= 0) {
+				return 1000 + recentIndex
 			}
-			return 0
-		})
+			return 2000
+		}
+		providers.sort((a, b) => rank(a.value) - rank(b.value))
 		return providers
-	}, [catalogProviderListings, remoteConfigSettings])
+	}, [catalogProviderListings, remoteConfigSettings, preferredLanguage, favoriteProviders, recentProviders])
 
 	const currentProviderLabel = useMemo(() => {
 		return providerOptions.find((option) => option.value === selectedProvider)?.label || selectedProvider
@@ -165,11 +199,18 @@ const ApiOptions = ({
 	}, [currentProviderLabel, isDropdownVisible])
 
 	const searchableItems = useMemo(() => {
-		return providerOptions.map((option) => ({
-			value: option.value,
-			html: option.label,
+		const customItems = customProviderPresets.map((preset) => ({
+			value: `preset:${preset.id}`,
+			html: preset.name,
 		}))
-	}, [providerOptions])
+		return [
+			...customItems,
+			...providerOptions.map((option) => ({
+				value: option.value,
+				html: option.label,
+			})),
+		]
+	}, [customProviderPresets, providerOptions])
 
 	const fuse = useMemo(() => {
 		return new Fuse(searchableItems, {
@@ -187,10 +228,47 @@ const ApiOptions = ({
 		return searchTerm && searchTerm !== currentProviderLabel ? fuse.search(searchTerm)?.map((r) => r.item) : searchableItems
 	}, [searchableItems, searchTerm, fuse, currentProviderLabel])
 
-	const handleProviderChange = (newProvider: string) => {
-		handleModeFieldChange({ plan: "planModeApiProvider", act: "actModeApiProvider" }, newProvider as any, currentMode)
+	const rememberRecentProvider = (providerId: string) => {
+		setRecentProviders((prev) => {
+			const next = [providerId, ...prev.filter((id) => id !== providerId)].slice(0, 6)
+			saveProviderList(PROVIDER_RECENTS_KEY, next)
+			return next
+		})
+	}
+
+	const applyCustomProviderPreset = async (preset: ProviderPreset) => {
+		handleModeFieldChange({ plan: "planModeApiProvider", act: "actModeApiProvider" }, "openai" as any, currentMode)
+		rememberRecentProvider("openai")
 		setIsDropdownVisible(false)
 		setSelectedIndex(-1)
+		setSearchTerm(preset.name)
+		try {
+			await applyProviderPreset(preset, currentMode)
+		} catch (error) {
+			console.error("Failed to apply custom provider preset:", error)
+		}
+	}
+
+	const handleProviderChange = (newProvider: string) => {
+		if (newProvider.startsWith("preset:")) {
+			const preset = customProviderPresets.find((item) => `preset:${item.id}` === newProvider)
+			if (preset) {
+				void applyCustomProviderPreset(preset)
+			}
+			return
+		}
+		handleModeFieldChange({ plan: "planModeApiProvider", act: "actModeApiProvider" }, newProvider as any, currentMode)
+		rememberRecentProvider(newProvider)
+		setIsDropdownVisible(false)
+		setSelectedIndex(-1)
+	}
+
+	const toggleFavoriteProvider = (providerId: string) => {
+		setFavoriteProviders((prev) => {
+			const next = prev.includes(providerId) ? prev.filter((id) => id !== providerId) : [...prev, providerId]
+			saveProviderList(PROVIDER_FAVORITES_KEY, next)
+			return next
+		})
 	}
 
 	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -270,6 +348,7 @@ const ApiOptions = ({
 				flexDirection: "column",
 				gap: 5,
 				marginBottom: isPopup ? -10 : 0,
+				maxWidth: 920,
 			}}>
 			<style>
 				{`
@@ -339,20 +418,55 @@ const ApiOptions = ({
 					</VSCodeTextField>
 					{isDropdownVisible && (
 						<ProviderDropdownList ref={dropdownListRef} role="listbox">
-							{providerSearchResults.map((item, index) => (
-								<ProviderDropdownItem
-									data-testid={`provider-option-${item.value}`}
-									isSelected={index === selectedIndex}
-									key={item.value}
-									onClick={() => handleProviderChange(item.value)}
-									onMouseEnter={() => setSelectedIndex(index)}
-									ref={(el) => {
-										itemRefs.current[index] = el
-									}}
-									role="option">
-									<span>{item.html}</span>
-								</ProviderDropdownItem>
-							))}
+							{providerSearchResults.map((item, index) => {
+								const isCustomPreset = item.value.startsWith("preset:")
+								return (
+									<ProviderDropdownItem
+										data-testid={`provider-option-${item.value}`}
+										isSelected={index === selectedIndex}
+										key={item.value}
+										onClick={() => handleProviderChange(item.value)}
+										onMouseEnter={() => setSelectedIndex(index)}
+										ref={(el) => {
+											itemRefs.current[index] = el
+										}}
+										role="option">
+										<div className="flex w-full items-center justify-between gap-2">
+											<span className="min-w-0 truncate">{item.html}</span>
+											{isCustomPreset ? (
+												<span className="shrink-0 rounded bg-(--vscode-badge-background) px-1 py-px text-[9px] text-(--vscode-badge-foreground)">
+													自定义
+												</span>
+											) : (
+												<button
+													aria-label={
+														favoriteProviders.includes(item.value) ? "取消收藏" : "收藏"
+													}
+													className="shrink-0 rounded p-0.5 hover:text-foreground"
+													onClick={(event) => {
+														event.stopPropagation()
+														toggleFavoriteProvider(item.value)
+													}}
+													title={favoriteProviders.includes(item.value) ? "取消收藏" : "收藏"}>
+													<StarIcon
+														className={
+															favoriteProviders.includes(item.value)
+																? "text-(--vscode-charts-yellow)"
+																: "text-description"
+														}
+														fill={
+															favoriteProviders.includes(item.value)
+																? "currentColor"
+																: "none"
+														}
+														size={12}
+													/>
+												</button>
+											)}
+										</div>
+									</ProviderDropdownItem>
+								)
+							})}
 						</ProviderDropdownList>
 					)}
 				</ProviderDropdownWrapper>

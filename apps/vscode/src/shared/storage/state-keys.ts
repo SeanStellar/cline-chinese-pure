@@ -89,6 +89,14 @@ const GLOBAL_STATE_FIELDS = {
 	chineseNewUserPopupShown: { default: false as boolean },
 	chineseDailyPopupEnabled: { default: true as boolean },
 	chineseDailyPopupLastShownDate: { default: undefined as string | undefined },
+	// Saved model configurations (provider + key + model parameters) serialized
+	// as JSON. Stored in global state so profiles follow the extension host
+	// (including Remote-SSH) instead of the webview's local storage.
+	modelProfiles: { default: "[]" as string },
+	// Saved OpenAI-compatible provider presets (name, base URL, API key and
+	// custom model ids) serialized as JSON. Kept in global state so presets
+	// follow the extension host instead of the webview's local storage.
+	providerPresets: { default: "[]" as string },
 	mcpDisplayMode: { default: DEFAULT_MCP_DISPLAY_MODE as McpDisplayMode },
 	multiRootEnabled: { default: true as boolean },
 	lastDismissedInfoBannerVersion: { default: 0 as number },
@@ -300,7 +308,7 @@ const USER_SETTINGS_FIELDS = {
 	subagentsEnabled: { default: false as boolean },
 	worktreesEnabled: { default: false as boolean },
 	cloudSessionsEnabled: { default: false as boolean },
-	preferredLanguage: { default: "English" as string },
+	preferredLanguage: { default: "Simplified Chinese - 简体中文" as string },
 	mode: { default: "act" as Mode },
 	backgroundEditEnabled: { default: false as boolean },
 	optOutOfRemoteConfig: { default: false as boolean },

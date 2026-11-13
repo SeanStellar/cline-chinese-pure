@@ -34,7 +34,6 @@ import {
 	type OnboardingModelsByGroup,
 } from "./data-models"
 import { getUserTypeSelections, NEW_USER_TYPE, STEP_CONFIG } from "./data-steps"
-import FreeCredit from "./FreeCredit"
 import OnboardingShengSuanYunModelPicker from "./OnboardingShengSuanYunModelPicker"
 import { useOnboardingModels } from "./useOnboardingModels"
 
@@ -189,8 +188,6 @@ const ModelSelection = ({
 					)
 				})}
 			</div> */}
-			<FreeCredit />
-
 			{/* SEARCH MODEL — hidden for ClinePass, whose selection is constrained to the curated list. */}
 			{!isClinePass && false && (
 				<div className="flex w-full max-w-lg flex-col gap-6 my-4 border-t border-muted-foreground">
@@ -605,10 +602,7 @@ const OnboardingViewContent = ({ onboardingModels }: { onboardingModels: Onboard
 				setIsActionLoading(false)
 			}
 		}, 10_000)
-		let from = "chine-chinese"
-		if (userType === NEW_USER_TYPE.FREE) {
-			from = "CH_MC7LPRV0"
-		}
+		const from = "cline-chinese"
 		await AccountServiceClient.shengSuanYunLoginClicked({ from }).catch((error) => {
 			console.error("Failed to log in to ShengSuanYun during onboarding:", error)
 		})

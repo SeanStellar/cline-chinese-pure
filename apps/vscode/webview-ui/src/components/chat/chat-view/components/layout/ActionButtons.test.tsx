@@ -93,12 +93,12 @@ describe("ActionButtons", () => {
 
 		const { rerender } = render(<ActionButtons {...props} messages={[task]} />)
 
-		const save = screen.getByRole("button", { name: "Save" })
+		const save = screen.getByRole("button", { name: "保存" })
 		expect(save).not.toBeDisabled()
 
 		// Approving latches the processing flag, disabling the buttons.
 		fireEvent.click(save)
-		expect(screen.getByRole("button", { name: "Save" })).toBeDisabled()
+		expect(screen.getByRole("button", { name: "保存" })).toBeDisabled()
 
 		// A second create-file ask arrives. Its config is the same object as the
 		// first, but the anchored timestamp changes — buttons must re-enable.
@@ -106,8 +106,8 @@ describe("ActionButtons", () => {
 		mockTurnState.mockReturnValue({ phase: "awaiting_approval", anchorTs: 2 })
 		rerender(<ActionButtons {...props} messages={[task, secondAsk]} />)
 
-		expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled()
-		expect(screen.getByRole("button", { name: "Reject" })).not.toBeDisabled()
+		expect(screen.getByRole("button", { name: "保存" })).not.toBeDisabled()
+		expect(screen.getByRole("button", { name: "拒绝" })).not.toBeDisabled()
 	})
 
 	it("passes Retry its preserving action without reading the draft", () => {
@@ -140,7 +140,7 @@ describe("ActionButtons", () => {
 			/>,
 		)
 
-		fireEvent.click(screen.getByRole("button", { name: "Retry" }))
+		fireEvent.click(screen.getByRole("button", { name: "重试" }))
 
 		expect(executeButtonAction).toHaveBeenCalledWith({ type: "retry" })
 		expect(chatState.getDraftSnapshot).not.toHaveBeenCalled()
@@ -166,8 +166,8 @@ describe("ActionButtons", () => {
 			/>,
 		)
 
-		expect(screen.getByRole("button", { name: "Retry" })).toBeDisabled()
-		expect(screen.getByRole("button", { name: "Start New Task" })).toBeDisabled()
+		expect(screen.getByRole("button", { name: "重试" })).toBeDisabled()
+		expect(screen.getByRole("button", { name: "开始新任务" })).toBeDisabled()
 	})
 
 	it("re-enables recovery buttons when the turn sequence advances", () => {
@@ -183,14 +183,14 @@ describe("ActionButtons", () => {
 		}
 		const { rerender } = render(<ActionButtons {...props} />)
 
-		fireEvent.click(screen.getByRole("button", { name: "Retry" }))
-		expect(screen.getByRole("button", { name: "Retry" })).toBeDisabled()
+		fireEvent.click(screen.getByRole("button", { name: "重试" }))
+		expect(screen.getByRole("button", { name: "重试" })).toBeDisabled()
 
 		mockTurnState.mockReturnValue({ phase: "error", anchorTs: 2, seq: 4 })
 		rerender(<ActionButtons {...props} />)
 
-		expect(screen.getByRole("button", { name: "Retry" })).not.toBeDisabled()
-		expect(screen.getByRole("button", { name: "Start New Task" })).not.toBeDisabled()
+		expect(screen.getByRole("button", { name: "重试" })).not.toBeDisabled()
+		expect(screen.getByRole("button", { name: "开始新任务" })).not.toBeDisabled()
 	})
 
 	it("releases its local latch when another recovery control owns the turn", async () => {
@@ -213,10 +213,10 @@ describe("ActionButtons", () => {
 		)
 
 		await act(async () => {
-			fireEvent.click(screen.getByRole("button", { name: "Retry" }))
+			fireEvent.click(screen.getByRole("button", { name: "重试" }))
 			await Promise.resolve()
 		})
-		expect(screen.getByRole("button", { name: "Retry" })).not.toBeDisabled()
+		expect(screen.getByRole("button", { name: "重试" })).not.toBeDisabled()
 	})
 
 	it("passes a submitting action the complete draft snapshot", () => {
@@ -242,7 +242,7 @@ describe("ActionButtons", () => {
 			/>,
 		)
 
-		fireEvent.click(screen.getByRole("button", { name: "Save" }))
+		fireEvent.click(screen.getByRole("button", { name: "保存" }))
 
 		expect(executeButtonAction).toHaveBeenCalledWith({ type: "approve", draft })
 	})
