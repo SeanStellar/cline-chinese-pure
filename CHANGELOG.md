@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.1.37] - 2026-11-13
+
+### Changed
+
+- Marketplace 扩展名改为 `cline-chinese-pure`（`cline-chinese` 已被占用），显示名仍为 `cline-chinese纯净版`。
+- 扩展 ID 变为 `seanstellar.cline-chinese-pure`。
+
 ## [4.1.36] - 2026-11-13
 
 ### Changed
